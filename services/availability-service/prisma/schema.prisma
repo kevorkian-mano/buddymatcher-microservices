@@ -1,0 +1,21 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Represents a weekly recurring availability window
+model AvailabilitySlot {
+  id        String   @id @default(uuid())
+  userId    String
+  dayOfWeek Int      // 0=Sunday … 6=Saturday
+  startTime String   // "HH:MM" 24h format
+  endTime   String   // "HH:MM" 24h format
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayOfWeek, startTime])
+}
