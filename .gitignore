@@ -1,0 +1,23 @@
+// .gitignore
+node_modules
+dist
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+// Prisma Client
+prisma/generated
+
+// Logs
+logs
+
+// Editor directories and files
+.vscode
+.idea
+.DS_Store
+
+// Optional npm cache directory
+.npm
+

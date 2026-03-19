@@ -49,7 +49,10 @@ async function startConsumer() {
         await prisma.matchCandidate.upsert({
           where: { userId },
           update: { availability: slots },
-          create: { userId, availability: slots }
+          create: { 
+            userId, 
+            availability: slots 
+        }
         });
         console.log(`[Matching] Updated availability for user ${userId}`);
       }

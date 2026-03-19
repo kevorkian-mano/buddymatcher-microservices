@@ -47,28 +47,28 @@ Many students struggle to find peers who match their learning pace, schedule, an
 ## 2. Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        React Frontend                           │
-│              (Apollo Client  ─  GraphQL over HTTP)              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │  GraphQL queries / mutations
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    GraphQL Gateway  :4000                        │
-│          (Apollo Gateway — stitches all sub-graphs)             │
-└──┬──────────┬────────────┬──────────┬──────────┬───────────┬───┘
-   │          │            │          │          │           │
- :4001      :4002        :4003      :4004      :4005       :4006  :4007
-User      Profile      Avail.    Matching   Session    Notif.  Msg
-Service   Service      Service   Service    Service    Service  Service
-   │          │            │          │          │           │
-   └──────────┴────────────┴──────────┴──────────┴───────────┘
-                             │  Kafka (async events)
-                             ▼
-                    ┌─────────────────┐
-                    │  Apache Kafka   │
-                    │  + Zookeeper    │
-                    └─────────────────┘
+      ┌─────────────────────────────────────────────────────────────────┐
+      │                        React Frontend                           │
+      │              (Apollo Client  ─  GraphQL over HTTP)              │
+      └────────────────────────────┬────────────────────────────────────┘
+                                   │  GraphQL queries / mutations
+                                   ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                    GraphQL Gateway  :4000                                 │
+│          (Apollo Gateway — stitches all sub-graphs)                       │
+└──┬──────────┬────────────┬──────────┬──────────┬───────────┬───────────┬──┘
+   │          │            │          │          │           │           │
+ :4001      :4002        :4003      :4004      :4005       :4006       :4007
+ User       Profile      Avail.     Matching   Session     Notif.       Msg
+Service     Service      Service    Service    Service    Service      Service
+   │          │            │          │          │           │           │
+   └──────────┴────────────┴──────────┴──────────┴───────────┴───────────┘
+                                    │  Kafka (async events)
+                                    ▼
+                            ┌─────────────────┐
+                            │  Apache Kafka   │
+                            │  + Zookeeper    │
+                            └─────────────────┘
 ```
 
 Each microservice:

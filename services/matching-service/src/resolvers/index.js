@@ -36,8 +36,10 @@ function calculateScore(me, candidate) {
 const resolvers = {
   Query: {
     getPotentialMatches: async (_, __, { user }) => {
+        // Ensure user is authenticated
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
 
+      // Fetch my profile
       const myProfile = await prisma.matchCandidate.findUnique({ where: { userId: user.id } });
       if (!myProfile) {
         // user hasn't set up profile yet
@@ -45,10 +47,12 @@ const resolvers = {
       }
 
       // Fetch other candidates
+      // In a real app, we would want to paginate this and not fetch all candidates at once
       const candidates = await prisma.matchCandidate.findMany({
         where: { userId: { not: user.id } }
       });
 
+      // Calculate scores for each candidate
       const results = candidates.map(candidate => {
         const { score, commonCourses, commonTopics } = calculateScore(myProfile, candidate);
         return {
