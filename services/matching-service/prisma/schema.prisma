@@ -1,0 +1,21 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Local cache of user data needed for matching
+model MatchCandidate {
+  id            String   @id @default(uuid())
+  userId        String   @unique // Foreign Key reference to User Service
+  courses       String[] // Stored as array of strings for simple matching
+  topics        String[] // Stored as array of strings
+  studyPace     String?
+  studyMode     String?
+  studyStyle    String?
+  availability  Json?    // Store availability slots as JSON
+  updatedAt     DateTime @updatedAt
+}

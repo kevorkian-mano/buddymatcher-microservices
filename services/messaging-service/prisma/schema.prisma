@@ -1,0 +1,16 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String   // Group or 1-on-1 ID
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+}
