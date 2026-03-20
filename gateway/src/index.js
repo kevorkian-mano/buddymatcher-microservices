@@ -6,13 +6,13 @@ require('dotenv').config();
 const gateway = new ApolloGateway({
   supergraphSdl: new IntrospectAndCompose({
     subgraphs: [
-      { name: 'user', url: 'http://localhost:4001' },
-      { name: 'profile', url: 'http://localhost:4002' },
-      { name: 'availability', url: 'http://localhost:4003' },
-      { name: 'matching', url: 'http://localhost:4004' },
-      { name: 'session', url: 'http://localhost:4005' },
-      { name: 'notification', url: 'http://localhost:4006' },
-      { name: 'messaging', url: 'http://localhost:4007' },
+      { name: 'user', url: process.env.USER_SERVICE_URL || 'http://localhost:4001' },
+      { name: 'profile', url: process.env.PROFILE_SERVICE_URL || 'http://localhost:4002' },
+      { name: 'availability', url: process.env.AVAILABILITY_SERVICE_URL || 'http://localhost:4003' },
+      { name: 'matching', url: process.env.MATCHING_SERVICE_URL || 'http://localhost:4004' },
+      { name: 'session', url: process.env.SESSION_SERVICE_URL || 'http://localhost:4005' },
+      { name: 'notification', url: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006' },
+      { name: 'messaging', url: process.env.MESSAGING_SERVICE_URL || 'http://localhost:4007' },
     ],
   }),
 });

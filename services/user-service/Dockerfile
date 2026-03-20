@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
+RUN npm add graphql-tag
 
 COPY . .
 RUN npx prisma generate
