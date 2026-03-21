@@ -1,5 +1,6 @@
 const { ApolloServer } = require('@apollo/server');
 const { startStandaloneServer } = require('@apollo/server/standalone');
+const { buildSubgraphSchema } = require('@apollo/subgraph');
 const { typeDefs } = require('./schema/typeDefs');
 const { resolvers } = require('./resolvers');
 const { startConsumer } = require('./kafka/consumer');
@@ -9,7 +10,9 @@ require('dotenv').config();
 async function startServer() {
   startConsumer().catch(console.error);
 
-  const server = new ApolloServer({ typeDefs, resolvers });
+  const server = new ApolloServer({
+    schema: buildSubgraphSchema([{ typeDefs, resolvers }]),
+  });
 
   const { url } = await startStandaloneServer(server, {
     listen: { port: parseInt(process.env.PORT) || 4006 },

@@ -7,6 +7,7 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "@apollo/subgraph": "^2.7.1",
     "@apollo/server": "^4.9.4",
     "@prisma/client": "^5.4.2",
     "dotenv": "^16.3.1",
