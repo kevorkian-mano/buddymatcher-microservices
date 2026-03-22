@@ -1,7 +1,23 @@
 const { ApolloServer } = require('@apollo/server');
 const { startStandaloneServer } = require('@apollo/server/standalone');
-const { ApolloGateway, IntrospectAndCompose } = require('@apollo/gateway');
+const {
+  ApolloGateway,
+  IntrospectAndCompose,
+  RemoteGraphQLDataSource,
+} = require('@apollo/gateway');
+
 require('dotenv').config();
+
+class AuthenticatedDataSource extends RemoteGraphQLDataSource {
+  willSendRequest({ request, context }) {
+    if (context.token) {
+      request.http.headers.set(
+        "authorization",
+        context.token
+      );
+    }
+  }
+}
 
 const gateway = new ApolloGateway({
   supergraphSdl: new IntrospectAndCompose({
@@ -15,6 +31,10 @@ const gateway = new ApolloGateway({
       { name: 'messaging', url: process.env.MESSAGING_SERVICE_URL || 'http://localhost:4007' },
     ],
   }),
+
+  buildService({ name, url }) {
+    return new AuthenticatedDataSource({ url });
+  },
 });
 
 const server = new ApolloServer({
@@ -24,9 +44,9 @@ const server = new ApolloServer({
 async function startGateway() {
   const { url } = await startStandaloneServer(server, {
     listen: { port: parseInt(process.env.PORT) || 4000 },
+
     context: async ({ req }) => {
-      // Pass the Authorization header to subgraphs
-      const token = req.headers.authorization || '';
+      const token = req.headers.authorization || "";
       return { token };
     },
   });
