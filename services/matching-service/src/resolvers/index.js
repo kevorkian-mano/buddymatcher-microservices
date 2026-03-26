@@ -75,6 +75,91 @@ const resolvers = {
       }
 
       return sorted;
+    },
+    
+    getBuddyRequests: async (_, __, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated');
+      return prisma.buddyRequest.findMany({
+        where: { toUser: user.id, status: 'PENDING' }
+      });
+    },
+
+    getConnections: async (_, __, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated');
+      const approved1 = await prisma.buddyRequest.findMany({
+        where: { toUser: user.id, status: 'ACCEPTED' },
+        select: { fromUser: true }
+      });
+      const approved2 = await prisma.buddyRequest.findMany({
+        where: { fromUser: user.id, status: 'ACCEPTED' },
+        select: { toUser: true }
+      });
+      
+      const set = new Set();
+      approved1.forEach(req => set.add(req.fromUser));
+      approved2.forEach(req => set.add(req.toUser));
+      
+      return Array.from(set).map(userId => ({ userId }));
+    }
+  },
+
+  Mutation: {
+    sendBuddyRequest: async (_, { toUser }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated');
+      if (user.id === toUser) throw new GraphQLError('Cannot request yourself');
+
+      // Check existing connection or request
+      const existing = await prisma.buddyRequest.findFirst({
+        where: {
+          OR: [
+            { fromUser: user.id, toUser: toUser },
+            { fromUser: toUser, toUser: user.id }
+          ]
+        }
+      });
+
+      if (existing) {
+        if (existing.status === 'PENDING') throw new GraphQLError('Request already pending');
+        if (existing.status === 'ACCEPTED') throw new GraphQLError('Already connected');
+        // If rejected, could allow re-request or not. Let's just update to pending.
+        const updated = await prisma.buddyRequest.update({
+          where: { id: existing.id },
+          data: { status: 'PENDING', fromUser: user.id, toUser: toUser }
+        });
+        publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser });
+        return updated;
+      }
+
+      const req = await prisma.buddyRequest.create({
+        data: { fromUser: user.id, toUser }
+      });
+
+      publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser });
+      return req;
+    },
+
+    acceptBuddyRequest: async (_, { requestId }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated');
+      const req = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+      if (!req) throw new GraphQLError('Request not found');
+      if (req.toUser !== user.id) throw new GraphQLError('Unauthorized');
+
+      return prisma.buddyRequest.update({
+        where: { id: requestId },
+        data: { status: 'ACCEPTED' }
+      });
+    },
+
+    rejectBuddyRequest: async (_, { requestId }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated');
+      const req = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+      if (!req) throw new GraphQLError('Request not found');
+      if (req.toUser !== user.id) throw new GraphQLError('Unauthorized');
+
+      return prisma.buddyRequest.update({
+        where: { id: requestId },
+        data: { status: 'REJECTED' }
+      });
     }
   }
 };

@@ -7,6 +7,9 @@ dist
 .env.test
 .env.production
 
+# Make sure node_modules in any subdirectories are ignored too
+**/node_modules/
+
 // Prisma Client
 prisma/generated
 

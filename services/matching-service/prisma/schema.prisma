@@ -19,3 +19,14 @@ model MatchCandidate {
   availability  Json?    // Store availability slots as JSON
   updatedAt     DateTime @updatedAt
 }
+
+model BuddyRequest {
+  id        String   @id @default(uuid())
+  fromUser  String
+  toUser    String
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fromUser, toUser])
+}

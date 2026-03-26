@@ -30,12 +30,39 @@ async function startConsumer() {
       }
 
       if (topic === 'StudySessionCreated') {
-         // Logic to notify relevant users (e.g., friends or matched buddies)
-         // For now, logging, or maybe notify the creator
-         console.log('Session Created, logic pending for who to notify.');
+        const { creatorId, topic: sessionTopic, startTime } = payload;
+        await prisma.notification.create({
+          data: {
+            userId: creatorId,
+            type: 'SESSION_CREATED',
+            content: `Your study session on ${sessionTopic} is scheduled for ${new Date(startTime).toLocaleString()}.`
+          }
+        });
       }
-      
-      // Additional logic for other events
+
+      if (topic === 'StudySessionJoined') {
+        const { sessionId, userId } = payload;
+        await prisma.notification.create({
+          data: {
+            userId,
+            type: 'SESSION_JOINED',
+            content: `You have successfully joined the study session.`
+          }
+        });
+      }
+
+      if (topic === 'BuddyRequestCreated') {
+        const { toUser, fromUser } = payload;
+        if (toUser) {
+          await prisma.notification.create({
+            data: {
+              userId: toUser,
+              type: 'BUDDY_REQUEST',
+              content: `You have received a new buddy request!`
+            }
+          });
+        }
+      }
     },
   });
 }

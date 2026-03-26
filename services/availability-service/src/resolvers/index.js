@@ -38,7 +38,8 @@ const resolvers = {
       const slot = await prisma.availabilitySlot.create({
         data: { userId: user.id, dayOfWeek, startTime, endTime }
       });
-      await publishEvent('AvailabilityUpdated', { userId: user.id, action: 'created', slotId: slot.id });
+      const slots = await prisma.availabilitySlot.findMany({ where: { userId: user.id } });
+      await publishEvent('AvailabilityUpdated', { userId: user.id, slots });
       return slot;
     },
 
@@ -53,7 +54,8 @@ const resolvers = {
       if (overlaps) throw new GraphQLError('Overlapping availability slot exists');
 
       const updated = await prisma.availabilitySlot.update({ where: { id }, data: { startTime: newStart, endTime: newEnd } });
-      await publishEvent('AvailabilityUpdated', { userId: user.id, action: 'updated', slotId: id });
+      const slots = await prisma.availabilitySlot.findMany({ where: { userId: user.id } });
+      await publishEvent('AvailabilityUpdated', { userId: user.id, slots });
       return updated;
     },
 
@@ -62,6 +64,8 @@ const resolvers = {
       const existing = await prisma.availabilitySlot.findUnique({ where: { id } });
       if (!existing || existing.userId !== user.id) throw new GraphQLError('Slot not found or unauthorized');
       await prisma.availabilitySlot.delete({ where: { id } });
+      const slots = await prisma.availabilitySlot.findMany({ where: { userId: user.id } });
+      await publishEvent('AvailabilityUpdated', { userId: user.id, slots });
       return true;
     }
   }

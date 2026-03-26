@@ -19,27 +19,44 @@ async function startConsumer() {
       if (topic === 'UserPreferencesUpdated') {
         const { userId, courses, topics, preferences } = payload;
         
-        // Flatten courses and topics for easier storage
-        const courseIds = courses ? courses.map(c => c.name || c.id) : [];
-        const topicNames = topics ? topics.map(t => t.name || t.id) : [];
+        const updateData = {};
+        const createData = { userId };
+        
+        if (courses !== undefined) {
+          const courseIds = courses.map(c => c.name || c.id);
+          updateData.courses = courseIds;
+          createData.courses = courseIds;
+        } else {
+          createData.courses = [];
+        }
+        
+        if (topics !== undefined) {
+          const topicNames = topics.map(t => t.name || t.id);
+          updateData.topics = topicNames;
+          createData.topics = topicNames;
+        } else {
+          createData.topics = [];
+        }
+
+        if (preferences) {
+          if (preferences.studyPace !== undefined) {
+            updateData.studyPace = preferences.studyPace;
+            createData.studyPace = preferences.studyPace;
+          }
+          if (preferences.studyMode !== undefined) {
+            updateData.studyMode = preferences.studyMode;
+            createData.studyMode = preferences.studyMode;
+          }
+          if (preferences.studyStyle !== undefined) {
+            updateData.studyStyle = preferences.studyStyle;
+            createData.studyStyle = preferences.studyStyle;
+          }
+        }
 
         await prisma.matchCandidate.upsert({
           where: { userId },
-          update: {
-            courses: courseIds,
-            topics: topicNames,
-            studyPace: preferences?.studyPace,
-            studyMode: preferences?.studyMode,
-            studyStyle: preferences?.studyStyle,
-          },
-          create: {
-            userId,
-            courses: courseIds,
-            topics: topicNames,
-            studyPace: preferences?.studyPace,
-            studyMode: preferences?.studyMode,
-            studyStyle: preferences?.studyStyle,
-          }
+          update: updateData,
+          create: createData
         });
         console.log(`[Matching] Updated candidate profile for user ${userId}`);
       }

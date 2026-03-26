@@ -17,7 +17,6 @@ services:
 
   gateway:
     build: ./gateway
-    restart: on-failure
     ports:
       - "4000:4000"
     environment:

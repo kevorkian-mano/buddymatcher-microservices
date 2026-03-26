@@ -37,13 +37,37 @@ const resolvers = {
       const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
       if (!profile) throw new GraphQLError('Profile not found');
       const course = await prisma.course.create({ data: { name, code, profileId: profile.id } });
-      await publishEvent('UserPreferencesUpdated', { userId: user.id, type: 'course_added', courseId: course.id });
+      
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: profile.id },
+        include: { courses: true, topics: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        preferences: updatedProfile.preferences
+      });
       return course;
     },
 
     removeCourse: async (_, { courseId }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      
+      const courseToDelete = await prisma.course.findUnique({ where: { id: courseId } });
+      if (!courseToDelete) throw new GraphQLError('Course not found');
       await prisma.course.delete({ where: { id: courseId } });
+
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: courseToDelete.profileId },
+        include: { courses: true, topics: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        preferences: updatedProfile.preferences
+      });
       return true;
     },
 
@@ -52,13 +76,37 @@ const resolvers = {
       const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
       if (!profile) throw new GraphQLError('Profile not found');
       const topic = await prisma.topic.create({ data: { name, profileId: profile.id } });
-      await publishEvent('UserPreferencesUpdated', { userId: user.id, type: 'topic_added', topicId: topic.id });
+      
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: profile.id },
+        include: { courses: true, topics: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        preferences: updatedProfile.preferences
+      });
       return topic;
     },
 
     removeTopic: async (_, { topicId }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+
+      const topicToDelete = await prisma.topic.findUnique({ where: { id: topicId } });
+      if (!topicToDelete) throw new GraphQLError('Topic not found');
       await prisma.topic.delete({ where: { id: topicId } });
+
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: topicToDelete.profileId },
+        include: { courses: true, topics: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        preferences: updatedProfile.preferences
+      });
       return true;
     },
 
@@ -73,7 +121,16 @@ const resolvers = {
         create: { profileId: profile.id, ...args }
       });
 
-      await publishEvent('UserPreferencesUpdated', { userId: user.id, type: 'preferences_updated', preferences: prefs });
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: profile.id },
+        include: { courses: true, topics: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        preferences: updatedProfile.preferences
+      });
       return prefs;
     }
   }
