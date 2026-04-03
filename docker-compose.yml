@@ -37,6 +37,16 @@ services:
       - notification-service
       - messaging-service
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Tell Vite to connect GraphQL directly to the API Gateway exposed on localhost:4000
+      - VITE_GRAPHQL_URI=http://localhost:4000/graphql
+    depends_on:
+      - gateway
+
   user-service:
     build: ./services/user-service
     ports:
