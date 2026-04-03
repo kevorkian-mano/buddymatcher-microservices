@@ -10,9 +10,9 @@ RUN apk add --no-cache wget
 
 COPY . .
 
-# Copy the wait-for script and give it execution permissions
+# Copy the wait-for-script and give it execution permissions
 COPY wait-for-services.sh .
-RUN chmod +x wait-for-services.sh
+RUN dos2unix wait-for-services.sh && chmod +x wait-for-services.sh
 
 EXPOSE 4000
 CMD ["./wait-for-services.sh", "npm", "start"]

@@ -2,15 +2,15 @@ import React from "react";
 
 export function FormField({ label, type = "text", placeholder, required = false }) {
   return (
-    <div className="mt-3.5 max-md:max-w-full">
-      <label className="block text-xl text-zinc-800 max-md:max-w-full">
+    <div className="mt-4">
+      <label className="block text-base font-worksans font-medium text-zinc-800 mb-1.5">
         {label}
       </label>
       <input
         type={type}
         placeholder={placeholder}
         required={required}
-        className="flex mt-3.5 w-full rounded-xl border border-solid border-stone-700 min-h-[58px] px-4 max-md:max-w-full focus:outline-none focus:ring-2 focus:ring-zinc-800"
+        className="w-full px-4 py-3.5 rounded-xl border border-zinc-400 bg-white text-base font-worksans text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-800 focus:border-zinc-800 transition-colors"
       />
     </div>
   );

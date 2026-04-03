@@ -2,10 +2,10 @@ import React from "react";
 
 export function ProgressBar({ progress }) {
   return (
-    <div className="flex flex-col grow shrink items-start self-stretch my-auto rounded-xl border border-black border-solid bg-amber-200 bg-opacity-0 min-h-4 min-w-60 pr-[718px] w-[1088px] max-md:max-w-full">
+    <div className="flex-1 h-3.5 rounded-full border border-zinc-800 bg-white overflow-hidden">
       <div
-        className="flex max-w-full bg-amber-200 rounded-xl border border-black border-solid min-h-4"
-        style={{ width: `${progress}%`, minWidth: '409px' }}
+        className="h-full bg-[#efd476] rounded-full"
+        style={{ width: `${progress}%` }}
       />
     </div>
   );
