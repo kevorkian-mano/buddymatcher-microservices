@@ -8,8 +8,8 @@ import { DayPill } from '../components/profile/DayPill';
 import { StudyGoalCard } from '../components/profile/StudyGoalCard';
 
 const UPDATE_PREFERENCES = gql`
-  mutation UpdatePreferences($studyStyle: String) {
-    updatePreferences(studyStyle: $studyStyle) {
+  mutation UpdatePreferences($studyStyle: String, $studyPace: String, $studyMode: String, $groupSize: String) {
+    updatePreferences(studyStyle: $studyStyle, studyPace: $studyPace, studyMode: $studyMode, groupSize: $groupSize) {
       id
     }
   }
@@ -23,9 +23,17 @@ const ADD_AVAILABILITY_SLOT = gql`
   }
 `;
 
-const ADD_TOPIC = gql`
-  mutation AddTopic($name: String!) {
-    addTopic(name: $name) {
+const ADD_FREE_DAY = gql`
+  mutation AddFreeDay($dayOfWeek: Int!) {
+    addFreeDay(dayOfWeek: $dayOfWeek) {
+      id
+    }
+  }
+`;
+
+const ADD_STUDY_GOAL = gql`
+  mutation AddStudyGoal($goal: String!) {
+    addStudyGoal(goal: $goal) {
       id
     }
   }
@@ -58,13 +66,16 @@ const dayMapping = {
 export default function StudyPreferences() {
   const navigate = useNavigate();
   const [selectedLearningStyle, setSelectedLearningStyle] = useState('');
+  const [studyPace, setStudyPace] = useState('');
+  const [studyMode, setStudyMode] = useState('');
+  const [groupSize, setGroupSize] = useState('');
   const [selectedDays, setSelectedDays] = useState([]);
   const [selectedGoals, setSelectedGoals] = useState([]);
   const [bio, setBio] = useState('');
 
   const [updatePreferences] = useMutation(UPDATE_PREFERENCES);
-  const [addAvailabilitySlot] = useMutation(ADD_AVAILABILITY_SLOT);
-  const [addTopic] = useMutation(ADD_TOPIC);
+  const [addFreeDay] = useMutation(ADD_FREE_DAY);
+  const [addStudyGoal] = useMutation(ADD_STUDY_GOAL);
 
   const handleDayToggle = (day) => {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -77,20 +88,27 @@ export default function StudyPreferences() {
   const handleBackClick = () => navigate(-1);
   const handleRegister = async () => {
     try {
-      // Save learning style
-      await updatePreferences({ variables: { studyStyle: selectedLearningStyle } });
+      // Save learning style, pace, mode, and group size
+      await updatePreferences({ 
+        variables: { 
+          studyStyle: selectedLearningStyle,
+          studyPace: studyPace,
+          studyMode: studyMode,
+          groupSize: groupSize
+        } 
+      });
 
-      // Save days of availability (Mocking 9 AM to 5 PM for those days)
+      // Save days of availability (Mocking using free days properly)
       for (const day of selectedDays) {
         const dayInt = dayMapping[day];
         if (dayInt !== undefined) {
-          await addAvailabilitySlot({ variables: { dayOfWeek: dayInt, startTime: "09:00", endTime: "17:00" } });
+          await addFreeDay({ variables: { dayOfWeek: dayInt } });
         }
       }
 
-      // Save additional goals as topics
+      // Save additional goals accurately
       for (const goal of selectedGoals) {
-        await addTopic({ variables: { name: goal } });
+        await addStudyGoal({ variables: { goal } });
       }
 
       navigate('/dashboard');
@@ -100,7 +118,7 @@ export default function StudyPreferences() {
     }
   };
 
-  const canContinue = selectedLearningStyle !== '' && selectedDays.length > 0 && selectedGoals.length > 0;
+  const canContinue = selectedLearningStyle !== '' && selectedDays.length > 0 && selectedGoals.length > 0 && studyPace !== '' && studyMode !== '' && groupSize !== '';
 
   return (
     <main className="overflow-hidden px-10 md:px-20 pt-10 md:pt-14 pb-20 md:pb-28 bg-white min-h-screen">
@@ -128,6 +146,54 @@ export default function StudyPreferences() {
                 description={style.description}
                 isSelected={selectedLearningStyle === style.id}
                 onClick={() => setSelectedLearningStyle(style.id)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="mb-6 text-2xl font-playfair font-bold text-zinc-900">
+            What is your preferred study pace?
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {['Slow', 'Moderate', 'Fast'].map((pace) => (
+              <DayPill
+                key={pace}
+                day={pace}
+                isSelected={studyPace === pace}
+                onClick={() => setStudyPace(pace)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="mb-6 text-2xl font-playfair font-bold text-zinc-900">
+            How do you prefer to study? (Mode)
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {['Online', 'In-person', 'Both'].map((mode) => (
+              <DayPill
+                key={mode}
+                day={mode}
+                isSelected={studyMode === mode}
+                onClick={() => setStudyMode(mode)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="mb-6 text-2xl font-playfair font-bold text-zinc-900">
+            Preferred group size?
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {['Small Group', 'Large Group'].map((size) => (
+              <DayPill
+                key={size}
+                day={size}
+                isSelected={groupSize === size}
+                onClick={() => setGroupSize(size)}
               />
             ))}
           </div>

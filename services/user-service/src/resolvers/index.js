@@ -18,16 +18,16 @@ const resolvers = {
   },
 
   Mutation: {
-    register: async (_, { name, email, password, university, major, academicYear, contactInfo }) => {
+    register: async (_, { name, email, password, university, major, academicYear, contactInfo, birthdate }) => {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) throw new GraphQLError('Email already in use', { extensions: { code: 'BAD_USER_INPUT' } });
-
+      
       const passwordHash = await bcrypt.hash(password, 10);
-      const newUser = await prisma.user.create({
-        data: { name, email, passwordHash, university, major, academicYear, contactInfo }
-      });
+      const parsedBirthdate = birthdate ? new Date(birthdate) : null;
 
-      const token = signToken({ id: newUser.id, email: newUser.email });
+      const newUser = await prisma.user.create({
+        data: { name, email, passwordHash, university, major, academicYear, contactInfo, birthdate: parsedBirthdate }
+      });      const token = signToken({ id: newUser.id, email: newUser.email });
       return { token, user: newUser };
     },
 
@@ -44,9 +44,15 @@ const resolvers = {
 
     updateProfile: async (_, args, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      
+      const updateData = { ...args };
+      if (updateData.birthdate) {
+        updateData.birthdate = new Date(updateData.birthdate);
+      }
+
       return prisma.user.update({
         where: { id: user.id },
-        data: args
+        data: updateData
       });
     }
   }

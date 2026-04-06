@@ -9,15 +9,25 @@ const typeDefs = gql`
     endTime: String!    # HH:MM
   }
 
+  type FreeDay {
+    id: ID!
+    userId: ID!
+    dayOfWeek: Int!
+  }
+
   type Query {
     getMyAvailability: [AvailabilitySlot!]!
     getAvailabilityByUserId(userId: ID!): [AvailabilitySlot!]!
+    getMyFreeDays: [FreeDay!]!
   }
 
   type Mutation {
     addAvailabilitySlot(dayOfWeek: Int!, startTime: String!, endTime: String!): AvailabilitySlot!
     updateAvailabilitySlot(id: ID!, startTime: String, endTime: String): AvailabilitySlot!
     deleteAvailabilitySlot(id: ID!): Boolean!
+
+    addFreeDay(dayOfWeek: Int!): FreeDay!
+    removeFreeDay(dayOfWeek: Int!): Boolean!
   }
 `;
 

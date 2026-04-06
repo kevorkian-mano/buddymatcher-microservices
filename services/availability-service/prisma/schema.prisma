@@ -19,3 +19,13 @@ model AvailabilitySlot {
 
   @@unique([userId, dayOfWeek, startTime])
 }
+
+model FreeDay {
+  id        String   @id @default(uuid())
+  userId    String
+  dayOfWeek Int      // 0=Sunday … 6=Saturday
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayOfWeek])
+}

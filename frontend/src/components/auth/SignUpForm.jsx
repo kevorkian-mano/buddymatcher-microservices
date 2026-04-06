@@ -30,6 +30,7 @@ export default function SignUpForm() {
           email: formData.email,
           password: formData.password,
           contactInfo: formData.phone,
+          birthdate: formData.birthDate,
         },
       });
       if (data.register.token) {
@@ -77,6 +78,7 @@ export default function SignUpForm() {
           value={formData.birthDate}
           onChange={handleChange}
           required
+          max={new Date().toISOString().split('T')[0]} // Max date is today
         />
         <FormField
           label="Phone Number"

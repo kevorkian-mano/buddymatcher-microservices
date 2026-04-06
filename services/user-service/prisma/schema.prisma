@@ -17,6 +17,7 @@ model User {
   major        String?
   academicYear String?
   contactInfo  String?  // email or phone for external comms
+  birthdate    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

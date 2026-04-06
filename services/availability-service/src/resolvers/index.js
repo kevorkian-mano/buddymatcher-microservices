@@ -26,6 +26,10 @@ const resolvers = {
     },
     getAvailabilityByUserId: async (_, { userId }) => {
       return prisma.availabilitySlot.findMany({ where: { userId } });
+    },
+    getMyFreeDays: async (_, __, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return prisma.freeDay.findMany({ where: { userId: user.id } });
     }
   },
 
@@ -66,6 +70,21 @@ const resolvers = {
       await prisma.availabilitySlot.delete({ where: { id } });
       const slots = await prisma.availabilitySlot.findMany({ where: { userId: user.id } });
       await publishEvent('AvailabilityUpdated', { userId: user.id, slots });
+      return true;
+    },
+
+    addFreeDay: async (_, { dayOfWeek }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      const existing = await prisma.freeDay.findFirst({ where: { userId: user.id, dayOfWeek } });
+      if (existing) throw new GraphQLError('Free day already exists');
+      return prisma.freeDay.create({ data: { userId: user.id, dayOfWeek } });
+    },
+
+    removeFreeDay: async (_, { dayOfWeek }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      const existing = await prisma.freeDay.findFirst({ where: { userId: user.id, dayOfWeek } });
+      if (!existing) throw new GraphQLError('Free day not found');
+      await prisma.freeDay.delete({ where: { id: existing.id } });
       return true;
     }
   }

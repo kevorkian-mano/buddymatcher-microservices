@@ -12,6 +12,11 @@ const typeDefs = gql`
     name: String!
   }
 
+  type StudyGoal {
+    id: ID!
+    goal: String!
+  }
+
   type Preferences {
     id: ID!
     studyPace: String
@@ -25,6 +30,7 @@ const typeDefs = gql`
     userId: ID!
     courses: [Course!]!
     topics: [Topic!]!
+    studyGoals: [StudyGoal!]!
     preferences: Preferences
     updatedAt: String!
   }
@@ -42,6 +48,9 @@ const typeDefs = gql`
 
     addTopic(name: String!): Topic!
     removeTopic(topicId: ID!): Boolean!
+
+    addStudyGoal(goal: String!): StudyGoal!
+    removeStudyGoal(goalId: ID!): Boolean!
 
     updatePreferences(
       studyPace: String

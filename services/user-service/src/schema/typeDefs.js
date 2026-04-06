@@ -9,6 +9,7 @@ const typeDefs = gql`
     major: String
     academicYear: String
     contactInfo: String
+    birthdate: String
     createdAt: String!
   }
 
@@ -31,6 +32,7 @@ const typeDefs = gql`
       major: String
       academicYear: String
       contactInfo: String
+      birthdate: String
     ): AuthPayload!
 
     login(email: String!, password: String!): AuthPayload!
@@ -41,6 +43,7 @@ const typeDefs = gql`
       major: String
       academicYear: String
       contactInfo: String
+      birthdate: String
     ): User!
   }
 `;

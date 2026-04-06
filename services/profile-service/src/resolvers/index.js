@@ -10,13 +10,13 @@ const resolvers = {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return prisma.profile.findUnique({
         where: { userId: user.id },
-        include: { courses: true, topics: true, preferences: true }
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
     },
     getProfileByUserId: async (_, { userId }) => {
       return prisma.profile.findUnique({
         where: { userId },
-        include: { courses: true, topics: true, preferences: true }
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
     }
   },
@@ -28,7 +28,7 @@ const resolvers = {
         where: { userId },
         update: {},
         create: { userId },
-        include: { courses: true, topics: true, preferences: true }
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
     },
 
@@ -79,12 +79,13 @@ const resolvers = {
       
       const updatedProfile = await prisma.profile.findUnique({
         where: { id: profile.id },
-        include: { courses: true, topics: true, preferences: true }
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
       await publishEvent('UserPreferencesUpdated', { 
         userId: user.id, 
         courses: updatedProfile.courses,
         topics: updatedProfile.topics,
+        studyGoals: updatedProfile.studyGoals,
         preferences: updatedProfile.preferences
       });
       return topic;
@@ -99,12 +100,54 @@ const resolvers = {
 
       const updatedProfile = await prisma.profile.findUnique({
         where: { id: topicToDelete.profileId },
-        include: { courses: true, topics: true, preferences: true }
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
       await publishEvent('UserPreferencesUpdated', { 
         userId: user.id, 
         courses: updatedProfile.courses,
         topics: updatedProfile.topics,
+        studyGoals: updatedProfile.studyGoals,
+        preferences: updatedProfile.preferences
+      });
+      return true;
+    },
+
+    addStudyGoal: async (_, { goal }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) throw new GraphQLError('Profile not found');
+      const studyGoal = await prisma.studyGoal.create({ data: { goal, profileId: profile.id } });
+      
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: profile.id },
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        studyGoals: updatedProfile.studyGoals,
+        preferences: updatedProfile.preferences
+      });
+      return studyGoal;
+    },
+
+    removeStudyGoal: async (_, { goalId }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+
+      const goalToDelete = await prisma.studyGoal.findUnique({ where: { id: goalId } });
+      if (!goalToDelete) throw new GraphQLError('StudyGoal not found');
+      await prisma.studyGoal.delete({ where: { id: goalId } });
+
+      const updatedProfile = await prisma.profile.findUnique({
+        where: { id: goalToDelete.profileId },
+        include: { courses: true, topics: true, studyGoals: true, preferences: true }
+      });
+      await publishEvent('UserPreferencesUpdated', { 
+        userId: user.id, 
+        courses: updatedProfile.courses,
+        topics: updatedProfile.topics,
+        studyGoals: updatedProfile.studyGoals,
         preferences: updatedProfile.preferences
       });
       return true;
