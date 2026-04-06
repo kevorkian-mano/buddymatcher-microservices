@@ -6,6 +6,7 @@ const typeDefs = gql`
     name: String!
     email: String!
     university: String
+    major: String
     academicYear: String
     contactInfo: String
     createdAt: String!
@@ -27,6 +28,7 @@ const typeDefs = gql`
       email: String!
       password: String!
       university: String
+      major: String
       academicYear: String
       contactInfo: String
     ): AuthPayload!
@@ -36,6 +38,7 @@ const typeDefs = gql`
     updateProfile(
       name: String
       university: String
+      major: String
       academicYear: String
       contactInfo: String
     ): User!

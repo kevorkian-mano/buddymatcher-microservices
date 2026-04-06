@@ -38,9 +38,19 @@ export function HeroSection() {
               className="absolute inset-0 w-full h-full rounded-[32px] object-cover border border-zinc-800 z-10"
             />
 
-            <div className="absolute left-[34px] top-[54px] text-white text-[46px] leading-none z-20 drop-shadow-md" aria-hidden="true">
-              ✧
-            </div>
+            {/* Top-left sparkle */}
+            <img
+              src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+              alt="Decorative illustration"
+              className="object-contain absolute z-20 shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg]"
+            />
+
+            {/* Top-right sparkle */}
+            <img
+              src="https://api.builder.io/api/v1/image/assets/TEMP/f67e14264a980a3c5b9ee5af02f650f5baa3ac3a?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+              alt="Decorative illustration"
+              className="object-contain absolute z-20 shrink-0 aspect-[0.87] -top-6 -right-2 md:-right-6 h-[80px] w-[70px] rotate-[15deg]"
+            />
 
             <div className="absolute -right-8 md:-right-10 top-[66px] px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 text-zinc-900 z-20"
             >
@@ -58,9 +68,12 @@ export function HeroSection() {
 
             </div>
 
-            <div className="absolute right-[18px] bottom-[28px] text-white text-[56px] leading-none z-20 drop-shadow-md" aria-hidden="true">
-              ✧
-            </div>
+            {/* sparkle */}
+            <img
+              src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+              alt="Decorative illustration"
+              className="object-contain absolute z-20 shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg]"
+            />
           </div>
         </div>
       </div>

@@ -22,7 +22,7 @@ export function Footer() {
               </Link>
             </nav>
             <div className="text-[17px] font-worksans text-zinc-400">
-              © 2025 Alliatus. All rights reserved.
+              © 2025 buddymatcher. All rights reserved.
             </div>
             <div className="text-[17px] font-worksans text-zinc-400 mt-1">
               Powered by connection, clarity, and community.

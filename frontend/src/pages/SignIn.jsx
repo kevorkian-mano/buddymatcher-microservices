@@ -1,16 +1,17 @@
 import React from "react";
 import Header from "../components/layout/Header";
-import SignUpForm from "../components/auth/SignUpForm";
+import SignInForm from "../components/auth/SignInForm";
+import { Link } from "react-router-dom";
 
-function SignUp() {
+function SignIn() {
   return (
     <div className="overflow-hidden px-10 md:px-20 pt-10 md:pt-14 pb-20 md:pb-28 bg-white min-h-screen">
-      <Header />
+      <Header showProgress={false} />
 
       <main className="flex flex-wrap gap-10 items-start w-full mt-4 max-md:flex-col">
-        <SignUpForm />
+        <SignInForm />
 
-        {/* Right-side decorative Welcome card */}
+        {/* Right-side decorative Promo card */}
         <aside className="grow shrink self-stretch my-auto min-w-[300px] w-[580px] max-md:max-w-full flex items-center justify-center">
           <div className="relative w-full max-w-[520px]">
             {/* Top-left sparkle */}
@@ -28,26 +29,18 @@ function SignUp() {
             />
 
             {/* Main yellow card */}
-            <div className="relative bg-[#efd476] w-full max-w-[600px] min-h-[600px] mx-auto rounded-[32px] border border-[#d4b85e] p-10 md:p-16 flex flex-col items-center justify-center text-center mt-4">
-              <div className="w-full max-w-[440px]">
-                {/* "Welcome!" heading */}
-                <h3 className="text-5xl md:text-[56px] font-playfair italic font-bold text-zinc-900 mb-6 text-left leading-[1.1]">
-                  Welcome!
-                </h3>
+            <div className="relative bg-[#efd476] w-full max-w-[600px] min-h-[600px] mx-auto rounded-[32px] border border-[#d4b85e] p-10 md:p-16 flex flex-col items-center justify-center text-center mt-4">              <h2 className="text-[44px] md:text-[56px] font-playfair italic font-extrabold text-zinc-900 leading-[1.1]">
+                Create Account!
+              </h2>
 
-                {/* Image container with offset border */}
-                <div className="relative w-full">
-                  <div className="absolute top-[10px] left-[-8px] right-[-8px] bottom-[-10px] border border-zinc-700 rounded-[20px]" />
-                  <img
-                    src="https://api.builder.io/api/v1/image/assets/TEMP/d03b3af1ed25db54a69840eaff0d275e559bbbb3?width=876"
-                    alt="Mastermind meeting"
-                    className="relative w-full rounded-[20px] object-cover aspect-[1.6] border border-zinc-800 z-10"
-                  />
-                  {/* Sparkle on image */}
-                  <div className="absolute top-4 left-6 text-white text-[36px] leading-none z-20 drop-shadow-md select-none" aria-hidden="true">
-                    ✧
-                  </div>
-                </div>
+              <p className="mt-6 md:mt-8 text-xl font-worksans text-zinc-800">
+                Sign up if you still don&apos;t have an account
+              </p>
+
+              <div className="mt-10 md:mt-14 w-full">
+                <Link to="/signup" className="flex justify-center items-center py-4 w-full text-[20px] font-worksans font-medium text-white bg-zinc-900 rounded-[12px] hover:bg-zinc-800 border border-zinc-900 transition-colors">
+                  Sign Up
+                </Link>
               </div>
             </div>
 
@@ -64,4 +57,4 @@ function SignUp() {
   );
 }
 
-export default SignUp;
+export default SignIn;

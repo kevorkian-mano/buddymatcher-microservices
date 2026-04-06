@@ -18,13 +18,13 @@ const resolvers = {
   },
 
   Mutation: {
-    register: async (_, { name, email, password, university, academicYear, contactInfo }) => {
+    register: async (_, { name, email, password, university, major, academicYear, contactInfo }) => {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) throw new GraphQLError('Email already in use', { extensions: { code: 'BAD_USER_INPUT' } });
 
       const passwordHash = await bcrypt.hash(password, 10);
       const newUser = await prisma.user.create({
-        data: { name, email, passwordHash, university, academicYear, contactInfo }
+        data: { name, email, passwordHash, university, major, academicYear, contactInfo }
       });
 
       const token = signToken({ id: newUser.id, email: newUser.email });

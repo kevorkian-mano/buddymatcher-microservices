@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ProgressBar } from "../common/ProgressBar";
 
-export default function Header() {
+export default function Header({ showProgress = true, progress = 37.6 }) {
   return (
     <header className="w-full mb-6">
       <h1 className="text-4xl font-playfair font-bold text-zinc-800 mb-4">
@@ -16,7 +16,7 @@ export default function Header() {
           <span className="text-xl">←</span>
           <span>Back to Home</span>
         </Link>
-        <ProgressBar progress={37.6} />
+        {showProgress && <ProgressBar progress={progress} />}
       </nav>
     </header>
   );
