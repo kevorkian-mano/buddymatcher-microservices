@@ -8,6 +8,7 @@ import BuddyMatcherLanding from './pages/BuddyMatcherLanding';
 import Dashboard from './pages/Dashboard';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
+import EditProfile from './pages/EditProfile';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={<BuddyMatcherLanding />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<MyProfile />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<SignIn />} />
         <Route path="/academic-profile" element={<AcademicProfile />} />

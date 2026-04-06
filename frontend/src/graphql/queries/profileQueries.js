@@ -22,6 +22,10 @@ export const GET_MY_FULL_PROFILE = gql`
         id
         name
       }
+      studyGoals {
+        id
+        goal
+      }
       preferences {
         id
         studyPace

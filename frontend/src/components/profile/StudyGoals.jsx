@@ -1,23 +1,20 @@
 import React from 'react';
 
-export const StudyGoals = ({ topics = [] }) => {
-  // If no topics mapped via backend, render defaults for visual consistency
-  const goals = topics.length > 0 
-    ? topics.map(t => t.name) 
-    : ['Homework Help', 'Group Projects', 'Deep learning'];
+export const StudyGoals = ({ studyGoals = [] }) => {
+  if (!studyGoals || studyGoals.length === 0) return null;
 
   return (
-    <section className="w-full mt-10 mb-20">
-      <h3 className="text-3xl font-playfair font-bold text-zinc-900 mb-6">
-        Study goals & Topics:
+    <section className="w-full mt-4 mb-4">
+      <h3 className="text-2xl font-playfair font-bold text-zinc-900 mb-4">
+        Study Goals
       </h3>
-      <div className="flex flex-wrap gap-4 items-center text-xl md:text-2xl font-worksans font-medium text-zinc-800">
-        {goals.map((goal, idx) => (
+      <div className="flex flex-wrap gap-3 items-center text-lg font-worksans font-medium text-zinc-800">
+        {studyGoals.map((goal, idx) => (
           <div
             key={idx}
-            className="w-full md:w-auto flex flex-col justify-center px-10 py-8 rounded-[24px] border-2 border-black bg-white shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform cursor-default"
+            className="flex flex-col justify-center px-6 py-4 rounded-xl border-2 border-black bg-white shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform cursor-default"
           >
-            {goal}
+            {goal.goal}
           </div>
         ))}
       </div>

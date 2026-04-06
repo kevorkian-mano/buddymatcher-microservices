@@ -14,15 +14,15 @@ export const LearningStyle = ({ studyStyle }) => {
   const { title, desc } = getStyleConfig(studyStyle);
   
   return (
-    <section className="my-10 w-full">
-      <h3 className="text-3xl font-playfair font-bold text-zinc-900 mb-6">
+    <section className="w-full">
+      <h3 className="text-3xl font-playfair font-bold text-zinc-900 mb-4">
         Learning style:
       </h3>
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-8 w-full border-2 border-black rounded-[32px] overflow-hidden bg-[#efd476]">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full border-2 border-black rounded-[24px] overflow-hidden bg-[#efd476]">
         
         {/* Style Card details */}
-        <div className="flex flex-col p-8 md:p-12 w-full lg:w-1/2 justify-center">
-            <div className="bg-white px-8 py-10 border-2 border-black rounded-2xl shadow-[4px_4px_0px_#000]">
+        <div className="flex flex-col p-6 md:p-8 w-full lg:w-1/2 justify-center">
+            <div className="bg-white px-6 py-6 border-2 border-black rounded-xl shadow-[4px_4px_0px_#000]">
                 <h4 className="text-2xl md:text-3xl font-playfair italic font-bold text-zinc-900 mb-2">
                     {title}
                 </h4>

@@ -13,7 +13,7 @@ export default function Placeholder({ title }) {
             {title}
           </h1>
           <p className="font-worksans text-lg text-brand-dark/60 leading-relaxed mb-8">
-            This page is coming soon. Continue prompting to add content here!
+            This page is coming soon. 
           </p>
           <Link
             to="/"

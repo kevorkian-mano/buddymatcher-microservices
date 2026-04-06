@@ -1,8 +1,28 @@
-import React from 'react';
-
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Bell, MessageSquare, User } from 'lucide-react';
 
 export const Header = ({ userName }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="flex flex-wrap gap-4 md:gap-8 items-center justify-between w-full max-md:max-w-full">
       <h1 className="text-3xl md:text-4xl font-playfair font-extrabold italic lowercase text-zinc-900 tracking-tight shrink-0">
@@ -23,22 +43,44 @@ export const Header = ({ userName }) => {
         </div>
       </div>
       <div className="flex flex-row gap-4 md:gap-6 items-center shrink-0">
-        {/* Notifications Icon linking to /notifications */}
+        <Link to="/messages" className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white" title="Messages">
+          <MessageSquare className="w-5 h-5 text-zinc-700" />
+        </Link>
         <Link to="/notifications" className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white" title="Notifications">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-700">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
+          <Bell className="w-5 h-5 text-zinc-700" />
         </Link>
 
-        {/* Profile Avatar linking to /profile */}
-        <Link to="/profile" className="cursor-pointer hover:opacity-80 transition-opacity" title="My Profile">
-          <img
-            src="https://api.builder.io/api/v1/image/assets/TEMP/2d75665f4bea8a767dd1901f18a4ce99e80b63fe?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-            className="object-cover self-stretch aspect-square rounded-full w-[57px] border-2 border-zinc-900"
-            alt={`${userName} profile`}
-          />
-        </Link>
+        {/* Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white focus:outline-none"
+            title="Profile Menu"
+          >
+            <User className="w-5 h-5 text-zinc-700" />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden z-50">
+              <div className="py-2">
+                <Link 
+                  to="/profile" 
+                  className="block px-4 py-2.5 text-sm font-worksans text-zinc-800 font-medium hover:bg-stone-100 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  My Profile
+                </Link>
+                <div className="h-px bg-zinc-200 my-1"></div>
+                <button 
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2.5 text-sm font-worksans font-medium text-red-600 hover:bg-red-50 transition-colors focus:outline-none"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

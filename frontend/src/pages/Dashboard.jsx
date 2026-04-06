@@ -61,18 +61,18 @@ function Dashboard() {
   })) : [];
 
   return (
-    <div className="overflow-hidden px-10 md:px-20 pt-10 md:pt-14 pb-20 md:pb-28 bg-white min-h-screen relative">
-      <div className="max-w-[1400px] mx-auto z-10 relative flex flex-col w-full h-full">
+    <div className="overflow-hidden pr-6 md:pr-8 lg:pr-12 pl-0 pt-4 md:pt-6 pb-20 md:pb-28 bg-white min-h-screen relative">
+      <div className="max-w-[1800px] mx-auto z-10 relative flex flex-col w-full h-full">
 
         {/* Header section - Spans full width! */}
-        <div className="w-full flex flex-col mb-10">
+        <div className="w-full flex flex-col mb-10 pl-6 md:pl-8 lg:pl-12">
           <Header userName={user.name} />
           <Breadcrumb />
         </div>
 
         <div className="flex flex-col lg:flex-row gap-10 w-full items-start">
           {/* Sidebar Area */}
-          <div className="hidden lg:block w-[300px] shrink-0 sticky top-10">
+          <div className="hidden lg:block w-[300px] shrink-0 sticky top-6">
             <Sidebar />
           </div>
 

@@ -3,3 +3,8 @@ export { TabNavigation } from './TabNavigation';
 export { LearningStyle } from './LearningStyle';
 export { FreeDays } from './FreeDays';
 export { StudyGoals } from './StudyGoals';
+export { CoursesList } from './CoursesList';
+export { TopicsList } from './TopicsList';
+export { StudyPreferencesTab } from './StudyPreferencesTab';
+export { PersonalDetailsTab } from './PersonalDetailsTab';
+export { RecentActivityTab } from './RecentActivityTab';

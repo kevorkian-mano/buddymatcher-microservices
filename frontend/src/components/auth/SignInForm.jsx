@@ -1,17 +1,33 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useMutation } from "@apollo/client";
+import { LOGIN_USER } from "../../graphql/mutations/userMutations";
 
 export default function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const [login, { loading, error }] = useMutation(LOGIN_USER);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission via Apollo
-    console.log("Sign in attempt:", { email, password });
-    // Redirect to dashboard on successful login
-    navigate("/dashboard");
+    try {
+      const { data } = await login({
+        variables: { email, password },
+      });
+      // Handle form submission via Apollo
+      console.log("Sign in success:", data);
+      
+      if (data?.login?.token) {
+        localStorage.setItem("token", data.login.token);
+        localStorage.setItem("user", JSON.stringify(data.login.user));
+        // Redirect to dashboard on successful login
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error("Sign in failed:", err);
+    }
   };
 
   return (
@@ -22,6 +38,8 @@ export default function SignInForm() {
       <p className="mt-5 text-lg font-worksans font-medium text-zinc-800">
         Enter your email and password to log in
       </p>
+
+      {error && <p className="text-red-500 mt-2">{error.message}</p>}
 
       <form onSubmit={handleSubmit} className="mt-6 max-w-full w-[420px]">
         <div className="space-y-6">
@@ -72,9 +90,10 @@ export default function SignInForm() {
 
         <button
           type="submit"
-          className="mt-8 w-full py-4 text-lg font-worksans font-medium text-white bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-800 focus:ring-offset-2"
+          disabled={loading}
+          className="mt-8 w-full py-4 text-lg font-worksans font-medium text-white bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-800 focus:ring-offset-2 disabled:bg-zinc-400"
         >
-          Log In
+          {loading ? "Logging in..." : "Log In"}
         </button>
       </form>
 

@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const ProfileHeader = ({ user }) => {
+  const navigate = useNavigate();
+
   const getInitials = (name) => {
     if (!name) return "U";
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -14,11 +17,11 @@ export const ProfileHeader = ({ user }) => {
 
   return (
     <header className="flex flex-col w-full">
-      <h1 className="text-[44px] md:text-[56px] font-playfair italic font-extrabold text-zinc-900 leading-[1.1] mb-8">
+      <h1 className="text-[36px] md:text-[44px] font-playfair italic font-extrabold text-zinc-900 leading-[1.1] mb-6">
         My Profile
       </h1>
       
-      <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start md:items-center bg-white p-8 md:p-10 rounded-[32px] border-2 border-black relative shadow-[4px_4px_0px_#000]">
+      <div className="flex flex-col md:flex-row gap-5 md:gap-8 items-start md:items-center bg-white p-6 md:p-8 rounded-3xl border-2 border-black relative shadow-[4px_4px_0px_#000]">
         
         {/* Avatar Placeholder */}
         <div className="shrink-0 w-[120px] md:w-[150px] aspect-square rounded-full border-4 border-black overflow-hidden bg-amber-100 flex items-center justify-center">
@@ -50,7 +53,10 @@ export const ProfileHeader = ({ user }) => {
         </div>
 
         {/* Edit Button */}
-        <button className="md:absolute top-8 right-8 flex items-center justify-center px-6 py-3 bg-zinc-900 text-white rounded-xl text-lg font-worksans font-medium hover:bg-zinc-800 transition-colors">
+        <button 
+          onClick={() => navigate('/edit-profile')}
+          className="md:absolute top-8 right-8 flex items-center justify-center px-6 py-3 bg-zinc-900 text-white rounded-xl text-lg font-worksans font-medium hover:bg-zinc-800 transition-colors"
+        >
           Edit Profile
         </button>
       </div>

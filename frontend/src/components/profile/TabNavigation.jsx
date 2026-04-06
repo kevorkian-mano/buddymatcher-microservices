@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export const TabNavigation = () => {
-  const [activeTab, setActiveTab] = useState('study preferences');
-
+export const TabNavigation = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'study preferences', label: 'Study Preferences' },
     { id: 'personal details', label: 'Personal Details' },
@@ -10,11 +8,11 @@ export const TabNavigation = () => {
   ];
 
   return (
-    <nav className="flex flex-wrap gap-4 mt-6 w-full text-lg font-worksans font-medium text-zinc-800 border-b border-zinc-200 pb-4">
+    <nav className="flex flex-wrap gap-3 mt-4 w-full text-base md:text-lg font-worksans font-medium text-zinc-800 border-b border-zinc-200 pb-3">
       {tabs.map((tab) => (
         <button
           key={tab.id}
-          onClick={() => setActiveTab(tab.id)}
+          onClick={() => onTabChange(tab.id)}
           className={`flex items-center px-6 py-3 rounded-xl border-2 transition-all ${
             activeTab === tab.id
               ? 'bg-[#efd476] border-black font-bold shadow-[4px_4px_0px_#000] translate-y-[-2px]'
