@@ -15,6 +15,7 @@ model StudySession {
   duration    Int      // minutes
   sessionType String   // ONLINE or IN_PERSON
   location    String?  // URL or Room
+  creatorContactInfo String?
   participants SessionParticipant[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -24,6 +25,7 @@ model SessionParticipant {
   id        String       @id @default(uuid())
   sessionId String
   userId    String
+  contactInfo String?
   session   StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   status    String       @default("JOINED") // JOINED, LEFT
   joinedAt  DateTime     @default(now())

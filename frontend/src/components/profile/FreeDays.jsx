@@ -16,8 +16,6 @@ export const FreeDays = ({ days = ['Monday', 'Friday', 'Saturday'] }) => {
           </div>
         ))}
       </div>
-      
-
     </section>
   );
 };

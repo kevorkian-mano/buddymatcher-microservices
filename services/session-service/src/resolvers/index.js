@@ -22,9 +22,9 @@ const resolvers = {
     }
   },
   Mutation: {
-    createSession: async (_, { topic, startTime, duration, sessionType, location }, { user }) => {
+    createSession: async (_, { topic, startTime, duration, sessionType, location, contactInfo }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-
+      
       const session = await prisma.studySession.create({
         data: {
           creatorId: user.id,
@@ -33,8 +33,9 @@ const resolvers = {
           duration,
           sessionType,
           location,
+          creatorContactInfo: contactInfo,
           participants: {
-            create: { userId: user.id }
+            create: { userId: user.id, contactInfo: contactInfo }
           }
         },
         include: { participants: true }
@@ -49,9 +50,58 @@ const resolvers = {
 
       return session;
     },
-    joinSession: async (_, { sessionId }, { user }) => {
+    updateSession: async (_, { sessionId, topic, startTime, duration, sessionType, location, contactInfo }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      
+      const session = await prisma.studySession.findUnique({ where: { id: sessionId } });
+      if (!session) throw new GraphQLError('Session not found');
+      if (session.creatorId !== user.id) throw new GraphQLError('You are not the creator of this session');
 
+      const data = {};
+      if (topic !== undefined) data.topic = topic;
+      if (startTime !== undefined) data.startTime = new Date(startTime);
+      if (duration !== undefined) data.duration = duration;
+      if (sessionType !== undefined) data.sessionType = sessionType;
+      if (location !== undefined) data.location = location;
+      if (contactInfo !== undefined) data.creatorContactInfo = contactInfo;
+
+      const updatedSession = await prisma.studySession.update({
+        where: { id: sessionId },
+        data,
+        include: { participants: true }
+      });
+
+      if (contactInfo !== undefined) {
+        await prisma.sessionParticipant.update({
+          where: { sessionId_userId: { sessionId, userId: user.id } },
+          data: { contactInfo }
+        });
+      }
+
+      publishEvent('StudySessionUpdated', { 
+        sessionId,
+        creatorId: user.id,
+        topic: updatedSession.topic 
+      });
+
+      return updatedSession;
+    },
+    cancelSession: async (_, { sessionId }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      
+      const session = await prisma.studySession.findUnique({ where: { id: sessionId } });
+      if (!session) throw new GraphQLError('Session not found');
+      if (session.creatorId !== user.id) throw new GraphQLError('You are not the creator of this session');
+
+      await prisma.studySession.delete({ where: { id: sessionId } });
+
+      publishEvent('StudySessionCancelled', { sessionId, creatorId: user.id });
+
+      return true;
+    },
+    joinSession: async (_, { sessionId, contactInfo }, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      
       const session = await prisma.studySession.findUnique({ where: { id: sessionId } });
       if (!session) throw new GraphQLError('Session not found');
 
@@ -65,19 +115,19 @@ const resolvers = {
         where: { id: sessionId },
         data: {
           participants: {
-            create: { userId: user.id }
+            create: { userId: user.id, contactInfo: contactInfo }
           }
         },
         include: { participants: true }
       });
 
       publishEvent('StudySessionJoined', { sessionId, userId: user.id });
-
+      
       return updatedSession;
     },
     leaveSession: async (_, { sessionId }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated');
-
+      
       await prisma.sessionParticipant.delete({
         where: { sessionId_userId: { sessionId, userId: user.id } }
       });
