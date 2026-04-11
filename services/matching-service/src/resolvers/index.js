@@ -46,21 +46,63 @@ const resolvers = {
         return [];
       }
 
+      // Fetch existing connections and pending requests to map status
+      const existingReqs = await prisma.buddyRequest.findMany({
+        where: {
+          OR: [
+            { fromUser: user.id },
+            { toUser: user.id }
+          ]
+        }
+      });
+      
+      const existingReqsMap = new Map();
+      existingReqs.forEach(req => {
+        const otherUser = req.fromUser === user.id ? req.toUser : req.fromUser;
+        existingReqsMap.set(otherUser, req.status);
+      });
+
+      // Filter out ACCEPTED connections and users who sent us a request
+      const excludedUserIds = [user.id];
+      existingReqsMap.forEach((status, userId) => {
+        if (status === 'ACCEPTED') {
+          excludedUserIds.push(userId);
+        } else {
+          // If there's a PENDING request, we include them if WE sent it (so we can show it's "Requested")
+          // BUT wait, what if they sent us a request? Maybe we exclude them so they show in "Requests" tab, not here.
+          // Let's exclude if they sent us a request, or do whatever:
+          // The issue says: "when i send a request... it must be kept gray with Requested" -> meaning we show them.
+          // Let's just keep everyone else, and the frontend will look at the `requestStatus` field.
+        }
+      });
+      // Actually, if we received a request, we might want to exclude them from suggestions as they appear in Buddy Requests tab.
+      // We can iterate again and specifically exclude them
+      existingReqs.forEach(req => {
+        if (req.toUser === user.id && req.status === 'PENDING') {
+          excludedUserIds.push(req.fromUser);
+        }
+      });
+
       // Fetch other candidates
       // In a real app, we would want to paginate this and not fetch all candidates at once
       const candidates = await prisma.matchCandidate.findMany({
-        where: { userId: { not: user.id } }
+        where: { userId: { notIn: excludedUserIds } }
       });
 
       // Calculate scores for each candidate
       const results = candidates.map(candidate => {
         const { score, commonCourses, commonTopics } = calculateScore(myProfile, candidate);
+        let status = null;
+        if (existingReqsMap.has(candidate.userId)) {
+           status = existingReqsMap.get(candidate.userId); //e.g. 'PENDING'
+        }
         return {
           userId: candidate.userId,
           score,
           commonCourses,
           commonTopics,
-          reason: `Matched on ${commonCourses.length} courses and ${commonTopics.length} topics.`
+          reason: `Matched on ${commonCourses.length} courses and ${commonTopics.length} topics.`,
+          requestStatus: status
         };
       });
 

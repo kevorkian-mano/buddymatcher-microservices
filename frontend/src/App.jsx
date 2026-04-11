@@ -9,6 +9,10 @@ import Dashboard from './pages/Dashboard';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
 import EditProfile from './pages/EditProfile';
+import Matching from './pages/Matching';
+import Sessions from './pages/Sessions';
+import Notifications from './pages/Notifications';
+import Messages from './pages/Messages';
 
 function App() {
   return (
@@ -16,6 +20,10 @@ function App() {
       <Routes>
         <Route path="/" element={<BuddyMatcherLanding />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/matching" element={<Matching />} />
+        <Route path="/sessions" element={<Sessions />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/messages" element={<Messages />} />
         <Route path="/profile" element={<MyProfile />} />
         <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/signup" element={<SignUp />} />

@@ -4,6 +4,7 @@ export const TabNavigation = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'study preferences', label: 'Study Preferences' },
     { id: 'personal details', label: 'Personal Details' },
+    { id: 'availability', label: 'Availability' },
     { id: 'recent activity', label: 'Recent Activity' }
   ];
 

@@ -7,6 +7,7 @@ const typeDefs = gql`
     reason: String
     commonCourses: [String]
     commonTopics: [String]
+    requestStatus: String
   }
 
   type BuddyRequest {

@@ -9,7 +9,7 @@ async function startConsumer() {
   await consumer.connect();
   await consumer.subscribe({ 
     topics: ['MatchFound', 'StudySessionCreated', 'StudySessionJoined', 'BuddyRequestCreated'], 
-    fromBeginning: false 
+    fromBeginning: true 
   });
 
   await consumer.run({
@@ -19,10 +19,10 @@ async function startConsumer() {
       console.log(`[Notification] Received ${topic}`, payload);
 
       if (topic === 'MatchFound') {
-        const { toUser, score } = payload;
+        const { toUser, fromUser, score } = payload;
         await prisma.notification.create({
           data: {
-            userId: toUser,
+            userId: fromUser,
             type: 'MATCH_FOUND',
             content: `We found a new study buddy with ${score}% compatibility!`
           }

@@ -8,10 +8,20 @@ const resolvers = {
   Query: {
     getMyProfile: async (_, __, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return prisma.profile.findUnique({
+      
+      let profile = await prisma.profile.findUnique({
         where: { userId: user.id },
         include: { courses: true, topics: true, studyGoals: true, preferences: true }
       });
+      
+      if (!profile) {
+        profile = await prisma.profile.create({
+          data: { userId: user.id },
+          include: { courses: true, topics: true, studyGoals: true, preferences: true }
+        });
+      }
+      
+      return profile;
     },
     getProfileByUserId: async (_, { userId }) => {
       return prisma.profile.findUnique({
@@ -34,8 +44,10 @@ const resolvers = {
 
     addCourse: async (_, { name, code }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-      if (!profile) throw new GraphQLError('Profile not found');
+      let profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) {
+        profile = await prisma.profile.create({ data: { userId: user.id } });
+      }
       const course = await prisma.course.create({ data: { name, code, profileId: profile.id } });
       
       const updatedProfile = await prisma.profile.findUnique({
@@ -73,8 +85,10 @@ const resolvers = {
 
     addTopic: async (_, { name }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-      if (!profile) throw new GraphQLError('Profile not found');
+      let profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) {
+        profile = await prisma.profile.create({ data: { userId: user.id } });
+      }
       const topic = await prisma.topic.create({ data: { name, profileId: profile.id } });
       
       const updatedProfile = await prisma.profile.findUnique({
@@ -114,8 +128,10 @@ const resolvers = {
 
     addStudyGoal: async (_, { goal }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-      if (!profile) throw new GraphQLError('Profile not found');
+      let profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) {
+        profile = await prisma.profile.create({ data: { userId: user.id } });
+      }
       const studyGoal = await prisma.studyGoal.create({ data: { goal, profileId: profile.id } });
       
       const updatedProfile = await prisma.profile.findUnique({
@@ -155,8 +171,10 @@ const resolvers = {
 
     updatePreferences: async (_, args, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-      if (!profile) throw new GraphQLError('Profile not found');
+      let profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) {
+        profile = await prisma.profile.create({ data: { userId: user.id } });
+      }
 
       const prefs = await prisma.preferences.upsert({
         where: { profileId: profile.id },

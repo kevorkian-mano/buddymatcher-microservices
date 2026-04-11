@@ -8,7 +8,8 @@ import {
   TabNavigation, 
   StudyPreferencesTab,
   PersonalDetailsTab,
-  RecentActivityTab
+  RecentActivityTab,
+  AvailabilityTab
 } from '../components/profile';
 
 function MyProfile() {
@@ -62,6 +63,10 @@ function MyProfile() {
                 
                 {activeTab === 'personal details' && (
                   <PersonalDetailsTab user={me} profile={profile} />
+                )}
+
+                {activeTab === 'availability' && (
+                  <AvailabilityTab />
                 )}
 
                 {activeTab === 'recent activity' && (

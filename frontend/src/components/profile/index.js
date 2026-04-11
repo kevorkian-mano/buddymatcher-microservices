@@ -8,3 +8,4 @@ export { TopicsList } from './TopicsList';
 export { StudyPreferencesTab } from './StudyPreferencesTab';
 export { PersonalDetailsTab } from './PersonalDetailsTab';
 export { RecentActivityTab } from './RecentActivityTab';
+export { AvailabilityTab } from './AvailabilityTab';
