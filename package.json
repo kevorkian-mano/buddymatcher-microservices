@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "graphql-tag": "^2.12.6"
+    "dotenv": "^17.4.2",
+    "graphql-tag": "^2.12.6",
+    "pg": "^8.20.0"
   }
 }
