@@ -5,6 +5,7 @@ import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import { GET_POTENTIAL_MATCHES, GET_BUDDY_REQUESTS, GET_CONNECTIONS } from '../graphql/queries/matchingQueries';
 import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { GET_FULL_USER_BY_ID } from '../graphql/queries/userQueries';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const MatchCard = ({ match, onConnect }) => {
   const [clicked, setClicked] = useState(match.requestStatus === 'PENDING');
@@ -77,18 +78,18 @@ const SuggestionsView = () => {
 
   const handleConnect = (userId) => sendRequest({ variables: { toUser: userId } });
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="max-w-4xl font-worksans">
       <h2 className="text-[44px] md:text-[56px] font-playfair font-extrabold italic text-zinc-900 leading-[1.1] mb-6">Find Study Buddies</h2>
       <p className="text-zinc-600 mb-8 text-lg">Discover compatible study partners matched to your profile</p>
       
-      {loading ? <p>Loading matches...</p> : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {matches.map((m, i) => (
-             <MatchCard key={i} match={m} onConnect={handleConnect} />
-          ))}
-        </div>
-      )}
+      <div className="grid md:grid-cols-2 gap-6">
+        {matches.map((m, i) => (
+           <MatchCard key={i} match={m} onConnect={handleConnect} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -124,6 +125,8 @@ const RequestsView = () => {
   const [rejectRequest] = useMutation(REJECT_BUDDY_REQUEST, { onCompleted: () => refetch() });
 
   const pendingRequests = (data?.getBuddyRequests || []).filter(r => r.status === "PENDING");
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="max-w-4xl font-worksans">
@@ -171,6 +174,8 @@ const ConnectionCard = ({ conn, onRemove }) => {
 const ConnectionsView = () => {
   const { data, loading } = useQuery(GET_CONNECTIONS, { fetchPolicy: 'network-only' });
   const connections = data?.getConnections || [];
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="max-w-4xl font-worksans">

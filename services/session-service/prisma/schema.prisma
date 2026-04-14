@@ -14,6 +14,7 @@ model StudySession {
   startTime   DateTime
   duration    Int      // minutes
   sessionType String   // ONLINE or IN_PERSON
+  status      String   @default("ACTIVE") // ACTIVE, CANCELLED, COMPLETED
   location    String?  // URL or Room
   creatorContactInfo String?
   participants SessionParticipant[]

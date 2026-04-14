@@ -1,7 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export const Breadcrumb = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
+
   return (
     <nav className="flex gap-1.5 items-center self-start mt-6 text-lg font-worksans font-medium text-zinc-600 hover:text-zinc-900 transition-colors">
       <img
@@ -9,9 +18,9 @@ export const Breadcrumb = () => {
         className="object-contain shrink-0 self-stretch my-auto aspect-[0.89] w-[24px] opacity-70"
         alt="Back arrow"
       />
-      <Link to="/" className="self-stretch my-auto hover:underline">
+      <a href="/" onClick={handleLogout} className="self-stretch my-auto hover:underline cursor-pointer">
         Back to Home
-      </Link>
+      </a>
     </nav>
   );
 };

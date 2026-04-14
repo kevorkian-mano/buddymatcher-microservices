@@ -9,6 +9,7 @@ export const GET_SESSIONS = gql`
       startTime
       duration
       sessionType
+      status
       location
       creatorContactInfo
       participants {

@@ -11,6 +11,7 @@ import {
   RecentActivityTab,
   AvailabilityTab
 } from '../components/profile';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 function MyProfile() {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ function MyProfile() {
       setLocalUser(JSON.parse(savedUser));
     }
   }, []);
+
+  if (loading) return <LoadingSpinner />;
 
   const me = data?.me || localUser;
   const profile = data?.getMyProfile || {};

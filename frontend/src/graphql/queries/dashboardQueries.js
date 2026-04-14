@@ -6,9 +6,14 @@ export const GET_DASHBOARD_DATA = gql`
       id
       topic
       startTime
+      status
       duration
       sessionType
       location
+      creatorId
+      participants {
+        userId
+      }
     }
     getPotentialMatches {
       userId
@@ -16,6 +21,9 @@ export const GET_DASHBOARD_DATA = gql`
       reason
       commonCourses
       commonTopics
+    }
+    getConnections {
+      userId
     }
   }
 `;

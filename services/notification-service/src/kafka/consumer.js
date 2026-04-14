@@ -8,7 +8,7 @@ const consumer = kafka.consumer({ groupId: 'notification-group' });
 async function startConsumer() {
   await consumer.connect();
   await consumer.subscribe({ 
-    topics: ['MatchFound', 'StudySessionCreated', 'StudySessionJoined', 'BuddyRequestCreated'], 
+    topics: ['MatchFound', 'StudySessionCreated', 'StudySessionJoined', 'BuddyRequestCreated', 'SessionInvitationReceived'],
     fromBeginning: true 
   });
 
@@ -17,6 +17,17 @@ async function startConsumer() {
       const event = JSON.parse(message.value.toString());
       const { payload } = event;
       console.log(`[Notification] Received ${topic}`, payload);
+
+      if (topic === 'SessionInvitationReceived') {
+        const { sessionId, toUser, fromUser, topic: sessionTopic } = payload;
+        await prisma.notification.create({
+          data: {
+            userId: toUser,
+            type: 'SESSION_INVITATION',
+            content: `You have been invited to join a study session: ${sessionTopic}|||${sessionId}`
+          }
+        });
+      }
 
       if (topic === 'MatchFound') {
         const { toUser, fromUser, score } = payload;

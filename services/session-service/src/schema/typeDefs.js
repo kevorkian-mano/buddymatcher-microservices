@@ -14,6 +14,7 @@ const typeDefs = gql`
     startTime: String!
     duration: Int!
     sessionType: String!
+    status: String!
     location: String
     creatorContactInfo: String
     participants: [SessionParticipant!]!
@@ -32,6 +33,7 @@ const typeDefs = gql`
       sessionType: String!
       location: String
       contactInfo: String
+      invitedUserIds: [ID!]
     ): StudySession!
 
     updateSession(
@@ -40,6 +42,7 @@ const typeDefs = gql`
       startTime: String
       duration: Int
       sessionType: String
+      status: String
       location: String
       contactInfo: String
     ): StudySession!

@@ -20,3 +20,14 @@ export const GET_FULL_USER_BY_ID = gql`
     }
   }
 `;
+
+export const GET_ALL_USERS = gql`
+  query GetAllUsers {
+    getAllUsers {
+      id
+      name
+      university
+      major
+    }
+  }
+`;

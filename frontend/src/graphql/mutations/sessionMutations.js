@@ -7,6 +7,7 @@ export const CREATE_SESSION = gql`
     $duration: Int!
     $sessionType: String!
     $location: String
+    $invitedUserIds: [ID!]
   ) {
     createSession(
       topic: $topic
@@ -14,6 +15,7 @@ export const CREATE_SESSION = gql`
       duration: $duration
       sessionType: $sessionType
       location: $location
+      invitedUserIds: $invitedUserIds
     ) {
       id
       topic
@@ -26,6 +28,15 @@ export const JOIN_SESSION = gql`
   mutation JoinSession($sessionId: ID!) {
     joinSession(sessionId: $sessionId) {
       id
+    }
+  }
+`;
+
+export const TERMINATE_SESSION = gql`
+  mutation TerminateSession($sessionId: ID!, $status: String!) {
+    updateSession(sessionId: $sessionId, status: $status) {
+      id
+      status
     }
   }
 `;

@@ -199,26 +199,7 @@ export default function StudyPreferences() {
           </div>
         </section>
 
-        <section className="mb-12">
-          <header className="flex gap-2 items-end mb-6">
-            <h2 className="text-2xl font-playfair font-bold text-zinc-900">
-              Days you are free
-            </h2>
-            <p className="text-lg font-worksans text-zinc-600 pb-[2px]">
-              (select all that apply)
-            </p>
-          </header>
-          <div className="flex flex-wrap gap-3">
-            {daysOfWeek.map((day) => (
-              <DayPill
-                key={day}
-                day={day}
-                isSelected={selectedDays.includes(day)}
-                onClick={() => handleDayToggle(day)}
-              />
-            ))}
-          </div>
-        </section>
+
 
         <section className="mb-12">
           <h2 className="mb-6 text-2xl font-playfair font-bold text-zinc-900">

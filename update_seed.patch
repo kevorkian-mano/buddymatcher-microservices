@@ -1,0 +1,44 @@
+--- seed.js
++++ seed.js
+@@ -21,12 +21,12 @@
+     { name: "Data Structures", code: "CS201" },
+     { name: "Operating Systems", code: "CS301" }
+   ],
+   topics: [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }],
+-  preferences: { studyPace: "fast", studyMode: "in-person", groupSize: "small", studyStyle: "discussion" },
++  preferences: { studyPace: "Fast", studyMode: "In-person", groupSize: "Small Group", studyStyle: "reading" },
+   availability: [
+     { dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }, 
+     { dayOfWeek: 3, startTime: "18:00", endTime: "20:00" }  
+   ]
+ }));
+ 
+-groupA_Profiles[4].preferences.studyStyle = "notes"; 
++groupA_Profiles[4].preferences.studyStyle = "handson"; 
+ groupA_Profiles[4].availability.push({ dayOfWeek: 2, startTime: "12:00", endTime: "14:00" }); 
+ 
+@@ -39,12 +39,12 @@
+     { name: "Artificial Intelligence", code: "CS501" },
+     { name: "Databases", code: "CS401" }
+   ],
+   topics: [{ name: "Trees" }, { name: "Neural Networks" }, { name: "SQL" }], 
+-  preferences: { studyPace: "moderate", studyMode: "online", groupSize: "large", studyStyle: "notes" },
++  preferences: { studyPace: "Moderate", studyMode: "Online", groupSize: "Large Group", studyStyle: "visual" },
+   availability: [
+     { dayOfWeek: 1, startTime: "19:00", endTime: "21:00" }, 
+     { dayOfWeek: 4, startTime: "14:00", endTime: "16:00" }  
+   ]
+ }));
+ 
+@@ -58,12 +58,12 @@
+     { name: "European History", code: "HIST101" },
+     { name: "Art of the Renaissance", code: "ART202" }
+   ],
+   topics: [{ name: "The Medici Family" }, { name: "Painting techniques" }, { name: "Poetry" }],
+-  preferences: { studyPace: "slow", studyMode: "in-person", groupSize: "solo", studyStyle: "quiet" },
++  preferences: { studyPace: "Slow", studyMode: "In-person", groupSize: "Small Group", studyStyle: "auditory" },
+   availability: [
+     { dayOfWeek: 2, startTime: "08:00", endTime: "10:00" }, 
+     { dayOfWeek: 5, startTime: "08:00", endTime: "10:00" }  
+   ]
+ }));

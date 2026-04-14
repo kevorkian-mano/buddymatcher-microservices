@@ -1,0 +1,27 @@
+***************
+*** 21,32 ****
+      { name: "Data Structures", code: "CS201" },
+      { name: "Operating Systems", code: "CS301" }
+    ],
+    topics: [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }],
+-   preferences: { studyPace: "fast", studyMode: "in-person", groupSize: "small", studyStyle: "discussion" },
+    availability: [
+      { dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }, 
+      { dayOfWeek: 3, startTime: "18:00", endTime: "20:00" }  
+    ]
+  }));
+  
+- groupA_Profiles[4].preferences.studyStyle = "notes"; 
+--- 21,32 ----
+      { name: "Data Structures", code: "CS201" },
+      { name: "Operating Systems", code: "CS301" }
+    ],
+    topics: [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }],
++   preferences: { studyPace: "Fast", studyMode: "In-person", groupSize: "Small Group", studyStyle: "reading" },
+    availability: [
+      { dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }, 
+      { dayOfWeek: 3, startTime: "18:00", endTime: "20:00" }  
+    ]
+  }));
+  
++ groupA_Profiles[4].preferences.studyStyle = "handson"; 
