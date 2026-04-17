@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const token = jwt.sign({ id: '1f77c505-9466-450f-ace7-519324630eae' }, process.env.JWT_SECRET || 'changeme');
 
-fetch('http://localhost:4000/graphql', {
+fetch('http://gateway:4000/graphql', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
