@@ -36,3 +36,27 @@ export const GET_MY_FULL_PROFILE = gql`
     }
   }
 `;
+
+export const GET_PROFILE_BY_USER_ID = gql`
+  query GetProfile($userId: ID!) {
+    getUserById(id: $userId) {
+      id
+      name
+      major
+      academicYear
+    }
+    getProfileByUserId(userId: $userId) {
+      id
+      preferences {
+        studyPace
+        studyStyle
+      }
+    }
+    getAvailabilityByUserId(userId: $userId) {
+      id
+      dayOfWeek
+      startTime
+      endTime
+    }
+  }
+`;

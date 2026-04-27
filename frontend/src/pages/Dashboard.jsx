@@ -80,6 +80,7 @@ function Dashboard() {
     .sort((a, b) => new Date(parseInt(a.startTime) || a.startTime) - new Date(parseInt(b.startTime) || b.startTime));
 
   const sessionsData = upcomingSessionsList.length > 0 ? upcomingSessionsList.map(s => ({
+    id: s.id,
     title: s.topic,
     date: formatDate(s.startTime),
     time: `${formatTime(s.startTime)} · ${s.duration} mins`,
@@ -176,6 +177,8 @@ function Dashboard() {
                   {sessionsData.map((session, index) => (
                     <SessionCard
                       key={index}
+                      id={session.id}
+                      onClick={() => navigate(`/sessions/${session.id}`)}
                       title={session.title}
                       date={session.date}
                       time={session.time}
@@ -206,6 +209,8 @@ function Dashboard() {
                   {buddiesData.map((buddy, index) => (
                     <BuddyCard
                       key={index}
+                      userId={buddy.userId}
+                      onClick={() => navigate(`/buddies/${buddy.userId}`)}
                       name={buddy.name}
                       field={buddy.field}
                       school={buddy.school}

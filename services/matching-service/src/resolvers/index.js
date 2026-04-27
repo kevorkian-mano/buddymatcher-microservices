@@ -110,11 +110,8 @@ const resolvers = {
         .filter(r => r.score > 0)
         .sort((a, b) => b.score - a.score);
 
-      if (sorted.length > 0) {
-        // Optional: publish match found event for the top match if it's new
-        publishEvent('MatchFound', { fromUser: user.id, toUser: sorted[0].userId, score: sorted[0].score });
-      }
-
+      // Removed publishEvent from here, as Queries should be side-effect free and not spam notifications.
+      
       return sorted;
     },
     

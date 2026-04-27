@@ -7,7 +7,7 @@ import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '
 import { GET_FULL_USER_BY_ID } from '../graphql/queries/userQueries';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
-const MatchCard = ({ match, onConnect }) => {
+const MatchCard = ({ match, onConnect, onClick }) => {
   const [clicked, setClicked] = useState(match.requestStatus === 'PENDING');
   const { data } = useQuery(GET_FULL_USER_BY_ID, {
     variables: { id: match.userId },
@@ -19,13 +19,17 @@ const MatchCard = ({ match, onConnect }) => {
   const university = data?.getUserById?.university || "Unknown University";
   const year = data?.getUserById?.academicYear || "Year 1";
 
-  const handleConnect = () => {
+  const handleConnect = (e) => {
+    e.stopPropagation();
     onConnect(match.userId);
     setClicked(true);
   };
 
   return (
-    <div className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white">
+    <div 
+      onClick={() => onClick && onClick(match.userId)}
+      className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="text-2xl font-playfair text-zinc-900 font-bold mb-1">{userName}</h3>
@@ -64,6 +68,7 @@ const MatchCard = ({ match, onConnect }) => {
 };
 
 const SuggestionsView = () => {
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(GET_POTENTIAL_MATCHES, { fetchPolicy: 'network-only' });
   const [sendRequest] = useMutation(SEND_BUDDY_REQUEST, {
     onCompleted: () => refetch(),
@@ -87,7 +92,7 @@ const SuggestionsView = () => {
       
       <div className="grid md:grid-cols-2 gap-6">
         {matches.map((m, i) => (
-           <MatchCard key={i} match={m} onConnect={handleConnect} />
+           <MatchCard key={i} match={m} onConnect={handleConnect} onClick={(id) => navigate(`/buddies/${id}`)} />
         ))}
       </div>
     </div>

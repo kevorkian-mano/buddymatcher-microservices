@@ -1,14 +1,19 @@
 import React from 'react';
 
 export const SessionCard = ({
+  id,
   title,
   date,
   time,
   location,
-  isOnline = false
+  isOnline = false,
+  onClick
 }) => {
   return (
-    <article className="mt-4 w-full rounded-[2.5rem] bg-white border border-gray-300 p-8 hover:shadow-md transition-shadow cursor-pointer">
+    <article 
+      onClick={() => onClick && onClick(id)}
+      className="mt-4 w-full rounded-[2.5rem] bg-white border border-gray-300 p-8 hover:shadow-md transition-shadow cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-6">
         <h3 className="text-4xl font-playfair text-zinc-800 max-w-[70%]">
           {title}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_SESSIONS } from '../graphql/queries/sessionQueries';
 import { CREATE_SESSION, JOIN_SESSION, TERMINATE_SESSION } from '../graphql/mutations/sessionMutations';
@@ -21,6 +22,7 @@ const SessionCreatorName = ({ creatorId }) => {
 };
 
 const Sessions = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState({ name: "User" });
   const [mainTab, setMainTab] = useState('available'); // 'available', 'joined', 'created'
   const [subTab, setSubTab] = useState('upcoming');     // 'upcoming', 'completed', 'all'
@@ -191,7 +193,11 @@ const Sessions = () => {
               )}              {/* Session Cards list */}
               <div className="space-y-6">
                 {displayData.map((session) => (
-                  <div key={session.id} className="border border-gray-300 rounded-[2.5rem] p-8 bg-white hover:shadow-md transition-shadow">
+                  <div 
+                    key={session.id} 
+                    onClick={() => navigate(`/sessions/${session.id}`)}
+                    className="border border-gray-300 rounded-[2.5rem] p-8 bg-white hover:shadow-md transition-shadow cursor-pointer"
+                  >
                     <div className="flex justify-between items-start mb-6">
                       <h3 className="text-4xl font-playfair text-zinc-800">{session.title}</h3>
                       <div className={`bg-black text-white px-5 py-2 rounded-full flex items-center text-xs tracking-wide ${session.isPast ? 'opacity-50' : ''}`}>
@@ -238,16 +244,19 @@ const Sessions = () => {
                       </div>
                       {session.isCreator && !session.isPast ? (
                         <button 
-                          onClick={() => handleTerminate(session.id)}
+                          onClick={(e) => { e.stopPropagation(); handleTerminate(session.id); }}
                           className="bg-red-500 text-white hover:bg-red-600 px-10 py-3 rounded-2xl transition-colors font-medium flex items-center shadow-sm"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                           Terminate
                         </button>
                       ) : (
-                          <button 
-                            onClick={() => !session.hasJoined && !session.isCreator && handleJoin(session.id)}
-                            disabled={session.isPast || session.hasJoined || session.isCreator}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!session.hasJoined && !session.isCreator) handleJoin(session.id);
+                          }}
+                          disabled={session.isPast || session.hasJoined || session.isCreator}
                             className={`px-10 py-3 rounded-2xl transition-colors font-medium flex items-center ${
                               session.isPast 
                                 ? 'bg-[#2d2d2d] text-white opacity-50 cursor-not-allowed'

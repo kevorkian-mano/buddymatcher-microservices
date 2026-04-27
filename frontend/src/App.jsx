@@ -11,6 +11,8 @@ import Placeholder from './pages/Placeholder';
 import EditProfile from './pages/EditProfile';
 import Matching from './pages/Matching';
 import Sessions from './pages/Sessions';
+import SessionDetails from './pages/SessionDetails';
+import BuddyDetails from './pages/BuddyDetails';
 import Notifications from './pages/Notifications';
 import Messages from './pages/Messages';
 
@@ -46,6 +48,8 @@ function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/matching" element={<ProtectedRoute><Matching /></ProtectedRoute>} />
         <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+        <Route path="/sessions/:sessionId" element={<ProtectedRoute><SessionDetails /></ProtectedRoute>} />
+        <Route path="/buddies/:userId" element={<ProtectedRoute><BuddyDetails /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />

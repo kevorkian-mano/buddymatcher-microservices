@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 
 export const BuddyCard = ({
+  userId,
   name,
   field,
   school,
@@ -9,16 +10,21 @@ export const BuddyCard = ({
   matchPercentage,
   tags,
   subjects,
-  avatar
+  avatar,
+  onClick
 }) => {
   const [clicked, setClicked] = useState(false);
 
-  const handleConnect = () => {
+  const handleConnect = (e) => {
+    e.stopPropagation();
     setClicked(true);
   };
 
   return (
-    <div className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white h-full w-full">
+    <div 
+      onClick={() => onClick && onClick(userId)}
+      className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white h-full w-full cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="text-2xl font-playfair text-zinc-900 font-bold mb-1">{name}</h3>
