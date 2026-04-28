@@ -21,6 +21,7 @@ export const GET_DASHBOARD_DATA = gql`
       reason
       commonCourses
       commonTopics
+      requestStatus
     }
     getConnections {
       userId

@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import { GET_DASHBOARD_DATA } from '../graphql/queries/dashboardQueries';
+import { GET_POTENTIAL_MATCHES } from '../graphql/queries/matchingQueries';
 import { GET_ALL_USERS } from '../graphql/queries/userQueries';
+import { SEND_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { Header, Breadcrumb, Sidebar, StatsCard, SessionCard, BuddyCard } from '../components/dashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
@@ -26,6 +28,17 @@ function Dashboard() {
     fetchPolicy: 'network-only',
     errorPolicy: 'all'
   });
+
+  const [sendBuddyRequest] = useMutation(SEND_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_DASHBOARD_DATA },
+      { query: GET_POTENTIAL_MATCHES }
+    ]
+  });
+
+  const handleConnect = (userId) => {
+    sendBuddyRequest({ variables: { toUser: userId } }).catch(err => console.error(err));
+  };
 
   if (dashboardLoading || usersLoading) return <LoadingSpinner />;
 
@@ -106,7 +119,8 @@ function Dashboard() {
       matchPercentage: `${Math.round(m.score)}%`,
       tags: m.reason ? [m.reason] : ["Matched Buddy"],
       subjects: m.commonTopics || [],
-      avatar: `https://ui-avatars.com/api/?name=${name[0]}&background=random&color=fff`
+      avatar: `https://ui-avatars.com/api/?name=${name[0]}&background=random&color=fff`,
+      isRequested: m.requestStatus === 'PENDING'
     };
   }) : [];
 
@@ -219,6 +233,8 @@ function Dashboard() {
                       tags={buddy.tags}
                       subjects={buddy.subjects}
                       avatar={buddy.avatar}
+                      isRequested={buddy.isRequested}
+                      onConnect={handleConnect}
                     />
                   ))}
                 </div>

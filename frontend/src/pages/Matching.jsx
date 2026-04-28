@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
+import { GET_DASHBOARD_DATA } from '../graphql/queries/dashboardQueries';
 import { GET_POTENTIAL_MATCHES, GET_BUDDY_REQUESTS, GET_CONNECTIONS } from '../graphql/queries/matchingQueries';
 import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { GET_FULL_USER_BY_ID } from '../graphql/queries/userQueries';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const MatchCard = ({ match, onConnect, onClick }) => {
-  const [clicked, setClicked] = useState(match.requestStatus === 'PENDING');
+  const [localClicked, setLocalClicked] = useState(false);
+  const clicked = localClicked || match.requestStatus === 'PENDING';
+
   const { data } = useQuery(GET_FULL_USER_BY_ID, {
     variables: { id: match.userId },
     skip: !match.userId
@@ -21,8 +24,10 @@ const MatchCard = ({ match, onConnect, onClick }) => {
 
   const handleConnect = (e) => {
     e.stopPropagation();
-    onConnect(match.userId);
-    setClicked(true);
+    if (!clicked) {
+      setLocalClicked(true);
+      onConnect(match.userId);
+    }
   };
 
   return (
@@ -71,6 +76,10 @@ const SuggestionsView = () => {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(GET_POTENTIAL_MATCHES, { fetchPolicy: 'network-only' });
   const [sendRequest] = useMutation(SEND_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_DASHBOARD_DATA },
+      { query: GET_POTENTIAL_MATCHES }
+    ],
     onCompleted: () => refetch(),
     onError: (err) => console.error(err)
   });

@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, gql } from '@apollo/client';
 import Header from '../components/layout/Header';
 import { FormFields } from '../components/profile/FormFields';
-import { SubjectSelector } from '../components/profile/SubjectSelector';
+import { CourseSelector } from '../components/profile/CourseSelector';
+import { TopicsList } from '../components/profile/TopicsList';
 import { NavigationButtons } from '../components/profile/NavigationButtons';
+import { motion } from 'framer-motion';
 
 const UPDATE_USER_PROFILE = gql`
   mutation UpdateProfile($university: String, $major: String, $academicYear: String) {
@@ -36,9 +38,11 @@ export default function AcademicProfile() {
   const [major, setMajor] = useState('');
   const [year, setYear] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [topicsText, setTopicsText] = useState('');
   
   const [updateProfile] = useMutation(UPDATE_USER_PROFILE);
   const [addTopic] = useMutation(ADD_TOPIC);
+  const [addCourse] = useMutation(gql`mutation AddCourse($name: String!, $code: String) { addCourse(name: $name, code: $code) { id } }`);
   const [upsertProfile] = useMutation(UPSERT_PROFILE);
 
   const handleBack = () => navigate(-1);
@@ -53,10 +57,23 @@ export default function AcademicProfile() {
 
       // 1. Update university, major, and year in User service
       await updateProfile({ variables: { university, major, academicYear: year } });
-      
-      // 2. Add selected subjects as topics to Profile service
-      for (const subject of selectedSubjects) {
-         await addTopic({ variables: { name: subject } });
+
+      // 2. Add selected courses and topics to Profile service
+      // Persist courses (name + code). selectedSubjects is expected to be array of { name, code }
+      for (const c of selectedSubjects) {
+        // If item is a string (older flow), treat it as name-only
+        if (typeof c === 'string') {
+          await addCourse({ variables: { name: c } }).catch(console.error);
+        } else {
+          await addCourse({ variables: { name: c.name, code: c.code } }).catch(console.error);
+        }
+      }
+
+      // Persist topics from textarea: split by newlines or commas
+      const raw = topicsText || '';
+      const parsed = raw.split(/\n|,/).map(s => s.trim()).filter(Boolean);
+      for (const t of parsed) {
+        await addTopic({ variables: { name: t } }).catch(console.error);
       }
       
       navigate('/study-preferences');
@@ -70,7 +87,13 @@ export default function AcademicProfile() {
   const canContinue = university.trim() !== '' && major.trim() !== '' && year !== '' && selectedSubjects.length > 0;
 
   return (
-    <main className="overflow-hidden px-20 pt-14 pb-28 bg-white max-md:pb-24 max-md:pl-5 min-h-screen">
+    <motion.main 
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="overflow-hidden px-20 pt-14 pb-28 bg-white max-md:pb-24 max-md:pl-5 min-h-screen"
+    >
       <div className="flex flex-col w-full max-md:max-w-full">
         <div className="flex relative items-center w-full max-md:max-w-full">
           <div className="flex z-0 flex-col self-stretch my-auto min-w-60 w-[1335px] max-md:max-w-full">
@@ -94,10 +117,23 @@ export default function AcademicProfile() {
               onYearChange={setYear}
             />
 
-            <SubjectSelector
-              selectedSubjects={selectedSubjects}
-              onSubjectsChange={setSelectedSubjects}
+            <CourseSelector
+              selectedCourses={selectedSubjects}
+              onChange={setSelectedSubjects}
             />
+
+            <section className="mt-8 max-w-full">
+              <label className="text-2xl font-playfair font-bold">Topics</label>
+              <p className="text-md font-worksans opacity-80 mb-3">Add topics you're interested in (comma or newline separated)</p>
+              <textarea
+                value={topicsText}
+                onChange={e => setTopicsText(e.target.value)}
+                placeholder="e.g. linear algebra, machine learning, operating systems"
+                className="w-full min-h-[120px] px-4 py-3 rounded-xl border border-stone-300 font-worksans focus:outline-none focus:ring-1 focus:ring-zinc-800"
+              />
+
+              <TopicsList topics={(topicsText || '').split(/\n|,/).map(s => ({ name: s.trim() })).filter(t => t.name)} />
+            </section>
           </div>
 
         {/* Decorative Sparkles and Shapes */}
@@ -120,6 +156,6 @@ export default function AcademicProfile() {
           canContinue={canContinue}
         />
       </div>
-    </main>
+    </motion.main>
   );
 }

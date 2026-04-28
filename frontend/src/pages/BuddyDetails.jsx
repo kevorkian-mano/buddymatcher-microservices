@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_PROFILE_BY_USER_ID } from '../graphql/queries/profileQueries';
+import { GET_POTENTIAL_MATCHES } from '../graphql/queries/matchingQueries';
+import { GET_DASHBOARD_DATA } from '../graphql/queries/dashboardQueries';
 import { SEND_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -23,7 +25,19 @@ const BuddyDetails = () => {
     variables: { userId },
   });
 
+  const { data: matchesData } = useQuery(GET_POTENTIAL_MATCHES, {
+    fetchPolicy: 'cache-first'
+  });
+
+  const potentialMatch = matchesData?.getPotentialMatches?.find(m => m.userId === userId);
+  const internalIsRequested = potentialMatch?.requestStatus === 'PENDING';
+  const displayRequested = isRequestSent || internalIsRequested;
+
   const [sendBuddyRequest, { loading: connecting }] = useMutation(SEND_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_POTENTIAL_MATCHES },
+      { query: GET_DASHBOARD_DATA }
+    ],
     onCompleted: () => {
       setIsRequestSent(true);
     },
@@ -34,7 +48,7 @@ const BuddyDetails = () => {
   });
 
   const handleConnect = async () => {
-    if (!userId || isRequestSent) return;
+    if (!userId || displayRequested) return;
     try {
       await sendBuddyRequest({ variables: { toUser: userId } });
     } catch (e) {
@@ -124,14 +138,14 @@ const BuddyDetails = () => {
 
                   <button 
                     onClick={handleConnect}
-                    disabled={isRequestSent || connecting}
+                    disabled={displayRequested || connecting}
                     className={`md:absolute top-8 right-8 flex items-center justify-center px-6 py-3 rounded-xl text-lg font-worksans font-medium transition-colors shadow-[2px_2px_0px_#000] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none ${
-                      isRequestSent 
+                      displayRequested 
                         ? 'bg-green-100 text-green-800 border-2 border-green-500 cursor-not-allowed shadow-none translate-y-[2px] translate-x-[2px]' 
                         : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     }`}
                   >
-                    {isRequestSent ? (
+                    {displayRequested ? (
                        <span className="flex items-center">
                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                          Requested

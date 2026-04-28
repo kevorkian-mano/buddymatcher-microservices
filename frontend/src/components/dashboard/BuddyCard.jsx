@@ -11,13 +11,21 @@ export const BuddyCard = ({
   tags,
   subjects,
   avatar,
-  onClick
+  onClick,
+  isRequested = false,
+  onConnect
 }) => {
-  const [clicked, setClicked] = useState(false);
+  const [localClicked, setLocalClicked] = useState(false);
+  const clicked = isRequested || localClicked;
 
   const handleConnect = (e) => {
     e.stopPropagation();
-    setClicked(true);
+    if (!clicked) {
+      setLocalClicked(true);
+      if (onConnect) {
+        onConnect(userId);
+      }
+    }
   };
 
   return (
