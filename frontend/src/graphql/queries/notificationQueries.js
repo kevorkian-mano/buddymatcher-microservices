@@ -6,6 +6,7 @@ export const GET_MY_NOTIFICATIONS = gql`
       id
       type
       content
+      metadata
       read
       createdAt
     }

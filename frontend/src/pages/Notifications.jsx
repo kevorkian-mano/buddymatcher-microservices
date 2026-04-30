@@ -5,117 +5,322 @@ import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import { GET_MY_NOTIFICATIONS } from '../graphql/queries/notificationQueries';
 import { MARK_NOTIFICATION_READ } from '../graphql/mutations/notificationMutations';
 import { JOIN_SESSION } from '../graphql/mutations/sessionMutations';
+import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
+// ─── Type labels & icon colors ───────────────────────────────────────────────
+const TYPE_CONFIG = {
+  MATCH_FOUND:       { label: 'Study Buddy Match',     accent: 'border-l-violet-500',  badge: 'bg-violet-100 text-violet-700'  },
+  SESSION_CREATED:   { label: 'New Study Session',     accent: 'border-l-blue-500',    badge: 'bg-blue-100 text-blue-700'      },
+  SESSION_JOINED:    { label: 'Session Update',        accent: 'border-l-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
+  BUDDY_REQUEST:     { label: 'Buddy Request',         accent: 'border-l-amber-500',   badge: 'bg-amber-100 text-amber-700'    },
+  SESSION_INVITATION:{ label: 'Session Invitation',   accent: 'border-l-rose-500',    badge: 'bg-rose-100 text-rose-700'      },
+};
+
+// ─── Button helpers (reuse existing project button styles) ────────────────────
+const BtnPrimary   = ({ onClick, children, disabled }) => (
+  <button onClick={onClick} disabled={disabled}
+    className="px-5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-white font-medium text-sm hover:bg-zinc-700 transition-colors disabled:opacity-50">
+    {children}
+  </button>
+);
+const BtnSecondary = ({ onClick, children }) => (
+  <button onClick={onClick}
+    className="px-5 py-2 rounded-xl border border-zinc-400 text-zinc-700 font-medium text-sm hover:bg-zinc-100 transition-colors">
+    {children}
+  </button>
+);
+const BtnGreen  = ({ onClick, children, disabled }) => (
+  <button onClick={onClick} disabled={disabled}
+    className="px-5 py-2 rounded-xl border border-green-500 bg-green-50 text-green-700 font-medium text-sm hover:bg-green-100 transition-colors disabled:opacity-50">
+    {children}
+  </button>
+);
+const BtnRed    = ({ onClick, children }) => (
+  <button onClick={onClick}
+    className="px-5 py-2 rounded-xl border border-red-500 bg-red-50 text-red-700 font-medium text-sm hover:bg-red-100 transition-colors">
+    {children}
+  </button>
+);
+const BtnIndigo = ({ onClick, children }) => (
+  <button onClick={onClick}
+    className="px-5 py-2 rounded-xl border border-indigo-500 bg-indigo-50 text-indigo-700 font-medium text-sm hover:bg-indigo-100 transition-colors">
+    {children}
+  </button>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 const Notifications = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState({ name: "Alex" });
+  const [user, setUser] = useState({ name: 'Alex' });
+  const [actionStates, setActionStates] = useState({}); // per-notif loading / done state
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const saved = localStorage.getItem('user');
+    if (saved) setUser(JSON.parse(saved));
   }, []);
 
   const { data, loading, error, refetch } = useQuery(GET_MY_NOTIFICATIONS, { fetchPolicy: 'network-only' });
-  const [markRead] = useMutation(MARK_NOTIFICATION_READ, {
-    onCompleted: () => refetch()
-  });
-  
-  const [joinSession] = useMutation(JOIN_SESSION);
+  const [markRead]       = useMutation(MARK_NOTIFICATION_READ, { onCompleted: () => refetch() });
+  const [joinSession]    = useMutation(JOIN_SESSION);
+  const [sendBuddy]      = useMutation(SEND_BUDDY_REQUEST);
+  const [acceptBuddy]    = useMutation(ACCEPT_BUDDY_REQUEST);
+  const [rejectBuddy]    = useMutation(REJECT_BUDDY_REQUEST);
 
   if (loading) return <LoadingSpinner />;
 
-  const notificationsData = data?.getMyNotifications || [];
+  const notifications = data?.getMyNotifications || [];
+  const unreadCount   = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = (id) => {
-    markRead({ variables: { id } });
+  // Parse metadata JSON string safely
+  const parseMeta = (n) => {
+    try { return n.metadata ? JSON.parse(n.metadata) : {}; }
+    catch { return {}; }
   };
 
-  const handleAcceptInvite = async (sessionId, notifId) => {
-    try {
-      await joinSession({ variables: { sessionId } });
-      alert("Successfully joined the session!");
-      handleMarkAsRead(notifId);
-    } catch(err) {
-      console.error(err);
-      alert("Error joining session or already joined.");
-      handleMarkAsRead(notifId);
-    }
-  };
+  const doMarkRead = (id) => markRead({ variables: { id } });
 
-  const handleRejectInvite = (notifId) => {
-    handleMarkAsRead(notifId);
-  };
+  const setAction = (id, state) => setActionStates(prev => ({ ...prev, [id]: state }));
 
-  const getActionButtons = (notification) => {
-    // Check if it's an invitation
-    if (notification.type === 'SESSION_INVITATION') {
-      const parts = notification.content.split('|||');
-      const sessionId = parts.length > 1 ? parts[1] : null;
+  // ─── Per-type action buttons ────────────────────────────────────────────────
 
-      if (!notification.read && sessionId) {
-        return (
-          <>
-            <button 
-              onClick={() => handleAcceptInvite(sessionId, notification.id)}
-              className="px-6 py-2.5 rounded-xl border border-green-500 bg-green-50 text-green-700 transition-colors font-medium hover:bg-green-100"
-            >
-              Join
-            </button>
-            <button 
-              onClick={() => navigate(`/sessions/${sessionId}`)}
-              className="px-6 py-2.5 rounded-xl border border-indigo-500 bg-indigo-50 text-indigo-700 transition-colors font-medium hover:bg-indigo-100"
-            >
-              View
-            </button>
-            <button 
-              onClick={() => handleRejectInvite(notification.id)}
-              className="px-6 py-2.5 rounded-xl border border-red-500 bg-red-50 text-red-700 transition-colors font-medium hover:bg-red-100"
-            >
-              Decline
-            </button>
-          </>
-        );
-      }
-      return null;
-    }
-
-    if (notification.type === 'BUDDY_REQUEST') {
-      if (!notification.read) {
-        return (
-          <button 
-            onClick={() => {
-              handleMarkAsRead(notification.id);
-              navigate('/matching');
+  // 1. MATCH_FOUND
+  const MatchFoundActions = ({ n, meta }) => {
+    const done = actionStates[n.id];
+    return (
+      <div className="flex flex-wrap gap-2 shrink-0">
+        <BtnIndigo onClick={() => navigate(`/buddies/${meta.matchedUserId}`)}>
+          View Profile
+        </BtnIndigo>
+        {!n.read && !done && (
+          <BtnGreen
+            disabled={actionStates[n.id] === 'connecting'}
+            onClick={async () => {
+              setAction(n.id, 'connecting');
+              try { await sendBuddy({ variables: { toUser: meta.matchedUserId } }); }
+              catch {}
+              setAction(n.id, 'connected');
+              doMarkRead(n.id);
             }}
-            className="px-6 py-2.5 rounded-xl border border-blue-500 bg-blue-50 text-blue-700 transition-colors font-medium hover:bg-blue-100"
           >
-            Review Request
-          </button>
+            {actionStates[n.id] === 'connecting' ? 'Connecting…' : 'Connect'}
+          </BtnGreen>
+        )}
+        {!n.read && (
+          <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>
+        )}
+      </div>
+    );
+  };
+
+  // 2. SESSION_CREATED
+  const SessionCreatedActions = ({ n, meta }) => (
+    <div className="flex flex-wrap gap-2 shrink-0">
+      <BtnPrimary onClick={() => navigate(`/sessions/${meta.sessionId}`)}>View Session</BtnPrimary>
+      {meta.creatorId && (
+        <BtnIndigo onClick={() => navigate(`/buddies/${meta.creatorId}`)}>View Creator</BtnIndigo>
+      )}
+      {!n.read && (
+        <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>
+      )}
+    </div>
+  );
+
+  // 3. SESSION_JOINED
+  const SessionJoinedActions = ({ n, meta }) => (
+    <div className="flex flex-wrap gap-2 shrink-0">
+      {meta.sessionId && (
+        <BtnPrimary onClick={() => navigate(`/sessions/${meta.sessionId}`)}>View Session</BtnPrimary>
+      )}
+      {!n.read && (
+        <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>
+      )}
+    </div>
+  );
+
+  // 4. BUDDY_REQUEST
+  const BuddyRequestActions = ({ n, meta }) => {
+    const done = actionStates[n.id];
+    return (
+      <div className="flex flex-wrap gap-2 shrink-0">
+        {meta.fromUserId && (
+          <BtnIndigo onClick={() => navigate(`/buddies/${meta.fromUserId}`)}>
+            View Profile
+          </BtnIndigo>
+        )}
+        {!n.read && !done && meta.requestId && (
+          <>
+            <BtnGreen
+              disabled={actionStates[n.id] === 'accepting'}
+              onClick={async () => {
+                setAction(n.id, 'accepting');
+                try { await acceptBuddy({ variables: { requestId: meta.requestId } }); }
+                catch {}
+                setAction(n.id, 'accepted');
+                doMarkRead(n.id);
+              }}
+            >
+              {actionStates[n.id] === 'accepting' ? 'Accepting…' : 'Accept'}
+            </BtnGreen>
+            <BtnRed
+              onClick={async () => {
+                setAction(n.id, 'rejecting');
+                try { await rejectBuddy({ variables: { requestId: meta.requestId } }); }
+                catch {}
+                setAction(n.id, 'rejected');
+                doMarkRead(n.id);
+              }}
+            >
+              Reject
+            </BtnRed>
+          </>
+        )}
+        {!n.read && !meta.requestId && (
+          <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>
+        )}
+      </div>
+    );
+  };
+
+  // 5. SESSION_INVITATION
+  const SessionInvitationActions = ({ n, meta }) => {
+    const done = actionStates[n.id];
+    return (
+      <div className="flex flex-wrap gap-2 shrink-0">
+        {meta.fromUserId && (
+          <BtnIndigo onClick={() => navigate(`/buddies/${meta.fromUserId}`)}>View Creator</BtnIndigo>
+        )}
+        {meta.sessionId && (
+          <BtnPrimary onClick={() => navigate(`/sessions/${meta.sessionId}`)}>View Session</BtnPrimary>
+        )}
+        {!n.read && !done && meta.sessionId && (
+          <>
+            <BtnGreen
+              disabled={actionStates[n.id] === 'joining'}
+              onClick={async () => {
+                setAction(n.id, 'joining');
+                try { await joinSession({ variables: { sessionId: meta.sessionId } }); }
+                catch {}
+                setAction(n.id, 'joined');
+                doMarkRead(n.id);
+              }}
+            >
+              {actionStates[n.id] === 'joining' ? 'Joining…' : 'Join'}
+            </BtnGreen>
+            <BtnRed onClick={() => doMarkRead(n.id)}>Decline</BtnRed>
+          </>
+        )}
+        {!n.read && !meta.sessionId && (
+          <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Render a single notification card ──────────────────────────────────────
+  const renderCard = (n) => {
+    const meta   = parseMeta(n);
+    const config = TYPE_CONFIG[n.type] || { label: n.type, accent: 'border-l-gray-400', badge: 'bg-gray-100 text-gray-700' };
+    const ts     = new Date(parseInt(n.createdAt)).toLocaleString();
+
+    // Build the rich description per type
+    let description = n.content;
+    if (n.type === 'MATCH_FOUND' && meta.matchedUserName) {
+      description = (
+        <span>
+          <span className="font-semibold text-zinc-800">{meta.matchedUserName}</span>
+          {' '}is a {meta.score}% match with you.{' '}
+          <span className="text-zinc-500 italic">{meta.reason}</span>
+          {meta.commonCourses?.length > 0 && (
+            <span className="ml-1">Shared courses: <span className="font-medium">{meta.commonCourses.join(', ')}</span>.</span>
+          )}
+          {meta.commonTopics?.length > 0 && (
+            <span className="ml-1">Shared topics: <span className="font-medium">{meta.commonTopics.join(', ')}</span>.</span>
+          )}
+        </span>
+      );
+    } else if (n.type === 'SESSION_CREATED' && meta.sessionTitle) {
+      description = (
+        <span>
+          <span className="font-semibold text-zinc-800">{meta.creatorName || 'Someone'}</span>
+          {' '}created a new session: <span className="font-semibold text-zinc-800">"{meta.sessionTitle}"</span>.
+        </span>
+      );
+    } else if (n.type === 'SESSION_JOINED') {
+      if (meta.role === 'creator' && meta.joinerName) {
+        description = (
+          <span>
+            <span className="font-semibold text-zinc-800">{meta.joinerName}</span>
+            {' '}joined your session: <span className="font-semibold text-zinc-800">"{meta.sessionTitle}"</span>.
+          </span>
+        );
+      } else if (meta.sessionTitle) {
+        description = (
+          <span>
+            You joined: <span className="font-semibold text-zinc-800">"{meta.sessionTitle}"</span>.
+          </span>
         );
       }
-      return null;
-    }
-
-    if (!notification.read) {
-      return (
-        <button 
-          onClick={() => handleMarkAsRead(notification.id)}
-          className="px-8 py-2.5 rounded-xl border transition-colors font-medium border-gray-400 text-gray-700 hover:bg-gray-50"
-        >
-          Mark as Read
-        </button>
+    } else if (n.type === 'BUDDY_REQUEST' && meta.fromUserName) {
+      description = (
+        <span>
+          <span className="font-semibold text-zinc-800">{meta.fromUserName}</span>
+          {' '}sent you a buddy request!
+        </span>
+      );
+    } else if (n.type === 'SESSION_INVITATION' && meta.fromUserName) {
+      description = (
+        <span>
+          <span className="font-semibold text-zinc-800">{meta.fromUserName}</span>
+          {' '}invited you to join{' '}
+          <span className="font-semibold text-zinc-800">"{meta.sessionTitle}"</span>.
+        </span>
       );
     }
-    return null;
+
+    const renderActions = () => {
+      if (n.type === 'MATCH_FOUND')        return <MatchFoundActions n={n} meta={meta} />;
+      if (n.type === 'SESSION_CREATED')    return <SessionCreatedActions n={n} meta={meta} />;
+      if (n.type === 'SESSION_JOINED')     return <SessionJoinedActions n={n} meta={meta} />;
+      if (n.type === 'BUDDY_REQUEST')      return <BuddyRequestActions n={n} meta={meta} />;
+      if (n.type === 'SESSION_INVITATION') return <SessionInvitationActions n={n} meta={meta} />;
+      // Fallback generic mark-as-read
+      if (!n.read) return <BtnSecondary onClick={() => doMarkRead(n.id)}>Mark as Read</BtnSecondary>;
+      return null;
+    };
+
+    return (
+      <div
+        key={n.id}
+        className={`border-l-4 ${config.accent} ${n.read ? 'border border-gray-200 bg-gray-50' : 'border border-gray-300 bg-white'} rounded-xl p-5 hover:shadow-sm transition-shadow`}
+      >
+        {/* Top row: type badge + timestamp */}
+        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <span className={`text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${config.badge}`}>
+            {config.label}
+          </span>
+          <span className="text-gray-400 text-sm">{ts}</span>
+        </div>
+
+        {/* Body + actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <p className={`leading-relaxed text-[15px] sm:pr-4 ${n.read ? 'text-gray-400' : 'text-gray-600'}`}>
+            {description}
+          </p>
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            {renderActions()}
+          </div>
+        </div>
+      </div>
+    );
   };
 
+  // ─── Page layout ─────────────────────────────────────────────────────────────
   return (
     <div className="overflow-hidden pr-6 md:pr-8 lg:pr-12 pl-0 pt-4 md:pt-6 pb-20 md:pb-28 bg-white min-h-screen relative">
       <div className="max-w-[1800px] mx-auto z-10 relative flex flex-col w-full h-full">
-        {/* Header section */}
+
+        {/* Header */}
         <div className="w-full flex flex-col mb-10 pl-6 md:pl-8 lg:pl-12">
           <Header userName={user.name} />
           <div className="mt-4"><Breadcrumb /></div>
@@ -127,41 +332,30 @@ const Notifications = () => {
             <Sidebar />
           </div>
 
-          {/* Main Content Area */}
+          {/* Main */}
           <div className="flex flex-col flex-1 w-full min-w-0 px-4 md:px-8">
             <main className="flex-1 font-worksans max-w-5xl w-full">
-              
+
               <div className="mb-8">
                 <h2 className="text-[44px] md:text-[56px] font-playfair font-extrabold italic text-zinc-900 leading-[1.1] mb-2 tracking-tight">
                   Notifications
                 </h2>
-                <p className="text-gray-600 text-lg font-medium">{notificationsData.length} total notifications</p>
+                <p className="text-gray-600 text-lg font-medium">
+                  {notifications.length} total &bull; {unreadCount} unread
+                </p>
               </div>
 
-              {/* Notifications List */}
+              {error && <p className="text-red-500">Error loading notifications.</p>}
+
+              {!error && notifications.length === 0 && (
+                <div className="text-center py-20 text-gray-400 font-worksans">
+                  <p className="text-2xl mb-2">🔔</p>
+                  <p className="text-lg">No notifications yet.</p>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {loading && <p className="text-gray-500">Loading notifications...</p>}
-                {error && <p className="text-red-500">Error loading notifications.</p>}
-                {!loading && !error && notificationsData.map((notification) => (
-                  <div key={notification.id} className={`border ${notification.read ? 'border-gray-200 bg-gray-50' : 'border-gray-400 bg-white'} rounded-xl p-6 hover:shadow-sm transition-shadow`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className={`text-2xl ${notification.read ? 'text-gray-600' : 'text-gray-800 font-medium'}`}>{notification.type}</h3>
-                      <span className="text-gray-500 font-medium">{new Date(parseInt(notification.createdAt)).toLocaleString()}</span>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <p className={`leading-relaxed pr-4 text-[17px] ${notification.read ? 'text-gray-500' : 'text-gray-600'}`}>
-                        {notification.type === 'SESSION_INVITATION' && notification.content.includes('|||') 
-                          ? notification.content.split('|||')[0]
-                          : notification.content}
-                      </p>
-                      
-                      <div className="flex gap-3 shrink-0">
-                        {getActionButtons(notification)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {notifications.map(renderCard)}
               </div>
 
             </main>

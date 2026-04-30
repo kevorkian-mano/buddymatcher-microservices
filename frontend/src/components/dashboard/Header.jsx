@@ -1,11 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, User } from 'lucide-react';
+import { useQuery } from '@apollo/client';
+import { GET_MY_NOTIFICATIONS } from '../../graphql/queries/notificationQueries';
 
 export const Header = ({ userName }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+
+  const { data: notifData } = useQuery(GET_MY_NOTIFICATIONS, {
+    pollInterval: 10000,
+    fetchPolicy: 'network-only'
+  });
+  const unreadCount = notifData?.getMyNotifications?.filter(n => !n.read)?.length || 0;
 
   const handleSignOut = () => {
     localStorage.removeItem('token');
@@ -42,17 +50,36 @@ export const Header = ({ userName }) => {
           />
         </div>
       </div>
+
       <div className="flex flex-row gap-4 md:gap-6 items-center shrink-0">
-        <Link to="/messages" className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white" title="Messages">
+        {/* Messages */}
+        <Link
+          to="/messages"
+          className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white"
+          title="Messages"
+        >
           <MessageSquare className="w-5 h-5 text-zinc-700" />
         </Link>
-        <Link to="/notifications" className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white" title="Notifications">
-          <Bell className="w-5 h-5 text-zinc-700" />
-        </Link>
+
+        {/* Notifications Bell with unread badge */}
+        <div className="relative">
+          <Link
+            to="/notifications"
+            className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white"
+            title="Notifications"
+          >
+            <Bell className="w-5 h-5 text-zinc-700" />
+          </Link>
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 pointer-events-none">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </div>
 
         {/* Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
-          <button 
+          <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-stone-300 hover:bg-stone-100 transition-colors shadow-sm bg-white focus:outline-none"
             title="Profile Menu"
@@ -63,15 +90,15 @@ export const Header = ({ userName }) => {
           {dropdownOpen && (
             <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden z-50">
               <div className="py-2">
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="block px-4 py-2.5 text-sm font-worksans text-zinc-800 font-medium hover:bg-stone-100 transition-colors"
                   onClick={() => setDropdownOpen(false)}
                 >
                   My Profile
                 </Link>
                 <div className="h-px bg-zinc-200 my-1"></div>
-                <button 
+                <button
                   onClick={handleSignOut}
                   className="w-full text-left px-4 py-2.5 text-sm font-worksans font-medium text-red-600 hover:bg-red-50 transition-colors focus:outline-none"
                 >
