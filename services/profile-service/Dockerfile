@@ -1,8 +1,8 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json ./
 RUN npm install
 RUN npm add jsonwebtoken
 RUN apk add --no-cache openssl

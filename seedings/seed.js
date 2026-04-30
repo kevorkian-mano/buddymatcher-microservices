@@ -7,6 +7,7 @@ const DATABASE_URL_USER = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mou
 const DATABASE_URL_PROFILE = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/profile_db?sslmode=require";
 const DATABASE_URL_AVAILABILITY = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/availability_db?sslmode=require";
 const DATABASE_URL_MATCHING = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/matching_db?sslmode=require";
+const DATABASE_URL_SESSION = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/session_db?sslmode=require";
 
 // Use a REAL bcrypt hash for the password "pass" so login succeeds
 const hash = (pwd) => pwd === "pass" ? "$2a$10$UwewS3G1TVx3soRfwhrXpu7It53vBHGwj7NujWUJ.EKV3CQz5jYxC" : "unknown"; 
@@ -176,6 +177,42 @@ async function seedMatchingDb() {
   await client.end();
 }
 
+async function seedSessionDb() {
+  const client = new Client({ connectionString: DATABASE_URL_SESSION });
+  await client.connect();
+
+  // Use the first user (Alice) as creator for demo sessions
+  const creatorId = groupA_Users[0].id;
+
+  const sessions = [
+    { topic: 'Data Structures Study Group', startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), duration: 90, sessionType: 'IN_PERSON', location: 'Library Room 204' },
+    { topic: 'Operating Systems Review', startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), duration: 60, sessionType: 'ONLINE', location: 'Zoom' },
+    { topic: 'Algorithms Problem Solving', startTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), duration: 120, sessionType: 'IN_PERSON', location: 'CS Building 101' },
+    { topic: 'Machine Learning Concepts', startTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), duration: 90, sessionType: 'ONLINE', location: 'Google Meet' },
+    { topic: 'Graph Theory Workshop', startTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000), duration: 60, sessionType: 'IN_PERSON', location: 'Math Building 305' },
+    { topic: 'Database Systems Deep Dive', startTime: new Date(Date.now() + 11 * 24 * 60 * 60 * 1000), duration: 120, sessionType: 'ONLINE', location: 'Teams' },
+    { topic: 'Computer Networks Exam Prep', startTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), duration: 90, sessionType: 'IN_PERSON', location: 'Engineering Hall 202' },
+    { topic: 'Sorting Algorithms Hackathon', startTime: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000), duration: 180, sessionType: 'IN_PERSON', location: 'Innovation Lab' },
+  ];
+
+  for (const s of sessions) {
+    const sessionId = crypto.randomUUID();
+    await client.query(`
+      INSERT INTO "StudySession" (id, "creatorId", topic, "startTime", duration, "sessionType", location, "creatorContactInfo", "createdAt")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      ON CONFLICT DO NOTHING
+    `, [sessionId, creatorId, s.topic, s.startTime, s.duration, s.sessionType, s.location, 'alice@stanford.edu']);
+
+    await client.query(`
+      INSERT INTO "SessionParticipant" (id, "sessionId", "userId", "contactInfo", "joinedAt")
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT DO NOTHING
+    `, [crypto.randomUUID(), sessionId, creatorId, 'alice@stanford.edu']);
+  }
+
+  await client.end();
+}
+
 async function run() {
   try {
     await seedUserDb();
@@ -186,6 +223,8 @@ async function run() {
     console.log('Availability DB Seeded.');
     await seedMatchingDb();
     console.log('Matching DB Seeded.');
+    await seedSessionDb();
+    console.log('Session DB Seeded.');
     console.log('All done!');
   } catch (err) {
     console.error('Migration failed', err);

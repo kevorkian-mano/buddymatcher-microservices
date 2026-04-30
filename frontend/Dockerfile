@@ -1,10 +1,10 @@
 # Base image for building and serving the React app
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy dependency definitions
-COPY package*.json ./
+COPY package.json ./
 
 # Install dependencies
 RUN npm install

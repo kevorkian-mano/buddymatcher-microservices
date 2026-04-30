@@ -8,7 +8,7 @@ import { setContext } from '@apollo/client/link/context';
 // Configure Apollo Client to connect to the Gateway
 const httpLink = createHttpLink({
   // Your backend gateway URL (uses local environment variable if set, otherwise defaults to port 4000)
-  uri: import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:4000/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:4000/',
 });
 
 const authLink = setContext((_, { headers }) => {
