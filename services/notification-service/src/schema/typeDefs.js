@@ -6,6 +6,7 @@ const typeDefs = gql`
     userId: ID!
     type: String!
     content: String!
+    metadata: String
     read: Boolean!
     createdAt: String!
   }

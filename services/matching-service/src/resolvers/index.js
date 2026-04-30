@@ -164,7 +164,7 @@ const resolvers = {
           where: { id: existing.id },
           data: { status: 'PENDING', fromUser: user.id, toUser: toUser }
         });
-        publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser });
+        publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser, requestId: updated.id });
         return updated;
       }
 
@@ -172,7 +172,7 @@ const resolvers = {
         data: { fromUser: user.id, toUser }
       });
 
-      publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser });
+      publishEvent('BuddyRequestCreated', { fromUser: user.id, toUser, requestId: req.id });
       return req;
     },
 

@@ -8,10 +8,16 @@ const resolvers = {
     getMyNotifications: async (_, __, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       
-      return prisma.notification.findMany({
+      const notifications = await prisma.notification.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' }
       });
+
+      return notifications.map(n => ({
+        ...n,
+        metadata: n.metadata ? JSON.stringify(n.metadata) : null,
+        createdAt: n.createdAt.getTime().toString()
+      }));
     }
   },
   Mutation: {

@@ -12,6 +12,7 @@ model Notification {
   userId    String
   type      String
   content   String
+  metadata  Json?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }

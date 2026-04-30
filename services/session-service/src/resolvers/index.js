@@ -132,7 +132,12 @@ const resolvers = {
         include: { participants: true }
       });
 
-      publishEvent('StudySessionJoined', { sessionId, userId: user.id });
+      publishEvent('StudySessionJoined', { 
+        sessionId, 
+        userId: user.id, 
+        creatorId: session.creatorId, 
+        topic: session.topic 
+      });
       
       return updatedSession;
     },

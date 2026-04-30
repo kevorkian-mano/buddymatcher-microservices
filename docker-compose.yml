@@ -109,6 +109,8 @@ services:
     environment:
       - PORT=4006
       - DATABASE_URL=${DATABASE_URL_NOTIFICATION}
+      - USER_SERVICE_DB_URL=${DATABASE_URL_USER}
+      - MATCH_SERVICE_DB_URL=${DATABASE_URL_MATCHING}
       - KAFKA_BROKER=kafka:9092
     depends_on:
       - kafka
