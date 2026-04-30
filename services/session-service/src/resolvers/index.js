@@ -7,9 +7,8 @@ const prisma = new PrismaClient();
 const resolvers = {
   Query: {
     getSessions: async () => {
-      // Return future sessions
+      // Return all sessions
       return prisma.studySession.findMany({
-        where: { startTime: { gte: new Date() } },
         include: { participants: true },
         orderBy: { startTime: 'asc' }
       });
@@ -22,7 +21,7 @@ const resolvers = {
     }
   },
   Mutation: {
-    createSession: async (_, { topic, startTime, duration, sessionType, location, contactInfo }, { user }) => {
+    createSession: async (_, { topic, startTime, duration, sessionType, location, contactInfo, invitedUserIds }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       
       const session = await prisma.studySession.create({
@@ -48,11 +47,22 @@ const resolvers = {
         startTime: session.startTime 
       });
 
+      if (invitedUserIds && invitedUserIds.length > 0) {
+        invitedUserIds.forEach(invitedUserId => {
+          publishEvent('SessionInvitationReceived', {
+            sessionId: session.id,
+            fromUser: user.id,
+            toUser: invitedUserId,
+            topic: session.topic
+          });
+        });
+      }
+
       return session;
     },
-    updateSession: async (_, { sessionId, topic, startTime, duration, sessionType, location, contactInfo }, { user }) => {
+    updateSession: async (_, { sessionId, topic, startTime, duration, sessionType, status, location, contactInfo }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      
+
       const session = await prisma.studySession.findUnique({ where: { id: sessionId } });
       if (!session) throw new GraphQLError('Session not found');
       if (session.creatorId !== user.id) throw new GraphQLError('You are not the creator of this session');
@@ -62,6 +72,7 @@ const resolvers = {
       if (startTime !== undefined) data.startTime = new Date(startTime);
       if (duration !== undefined) data.duration = duration;
       if (sessionType !== undefined) data.sessionType = sessionType;
+      if (status !== undefined) data.status = status;
       if (location !== undefined) data.location = location;
       if (contactInfo !== undefined) data.creatorContactInfo = contactInfo;
 

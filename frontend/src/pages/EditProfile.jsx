@@ -6,6 +6,7 @@ import { UPDATE_USER_PROFILE } from '../graphql/mutations/userMutations';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import { DayPill } from '../components/profile/DayPill';
 import { LearningStyleCard } from '../components/profile/LearningStyleCard';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const UPDATE_PREFERENCES = gql`
   mutation UpdatePreferences($studyStyle: String, $studyPace: String, $studyMode: String, $groupSize: String) {
@@ -126,6 +127,8 @@ function EditProfile() {
     setCourses(prev => prev.filter(item => item !== c));
   };
 
+  if (loading) return <LoadingSpinner />;
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -149,11 +152,8 @@ function EditProfile() {
     }
   };
 
-  if (loading) return <div className="p-10 font-worksans text-xl">Loading...</div>;
-
   return (
     <div className="overflow-hidden pr-6 md:pr-8 lg:pr-12 pl-0 pt-4 md:pt-6 pb-20 md:pb-28 bg-white min-h-screen relative w-full">
-      <img src="https://api.builder.io/api/v1/image/assets/TEMP/f6167e7425d570e9648e7389933bb7d6a2cd8117?placeholderIfAbsent=true" className="object-contain absolute top-[80px] -left-8 md:left-[5%] aspect-square w-[70px] opacity-20" alt="bg" />
 
       <div className="w-full max-w-none mx-0 z-10 relative flex flex-col h-full">
         <div className="w-full flex flex-col mb-10 pl-6 md:pl-8 lg:pl-12">

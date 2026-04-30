@@ -14,6 +14,10 @@ const resolvers = {
     getUserById: async (_, { id }, { user }) => {
       if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return prisma.user.findUnique({ where: { id } });
+    },
+    getAllUsers: async (_, __, { user }) => {
+      if (!user) throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return prisma.user.findMany();
     }
   },
 

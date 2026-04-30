@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
+import { GET_DASHBOARD_DATA } from '../graphql/queries/dashboardQueries';
 import { GET_POTENTIAL_MATCHES, GET_BUDDY_REQUESTS, GET_CONNECTIONS } from '../graphql/queries/matchingQueries';
 import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { GET_FULL_USER_BY_ID } from '../graphql/queries/userQueries';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
-const MatchCard = ({ match, onConnect }) => {
-  const [clicked, setClicked] = useState(match.requestStatus === 'PENDING');
+const MatchCard = ({ match, onConnect, onClick }) => {
+  const [localClicked, setLocalClicked] = useState(false);
+  const clicked = localClicked || match.requestStatus === 'PENDING';
+
   const { data } = useQuery(GET_FULL_USER_BY_ID, {
     variables: { id: match.userId },
     skip: !match.userId
@@ -18,13 +22,19 @@ const MatchCard = ({ match, onConnect }) => {
   const university = data?.getUserById?.university || "Unknown University";
   const year = data?.getUserById?.academicYear || "Year 1";
 
-  const handleConnect = () => {
-    onConnect(match.userId);
-    setClicked(true);
+  const handleConnect = (e) => {
+    e.stopPropagation();
+    if (!clicked) {
+      setLocalClicked(true);
+      onConnect(match.userId);
+    }
   };
 
   return (
-    <div className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white">
+    <div 
+      onClick={() => onClick && onClick(match.userId)}
+      className="border border-gray-300 rounded-3xl p-6 relative flex flex-col hover:shadow-lg transition-shadow bg-white cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="text-2xl font-playfair text-zinc-900 font-bold mb-1">{userName}</h3>
@@ -63,8 +73,13 @@ const MatchCard = ({ match, onConnect }) => {
 };
 
 const SuggestionsView = () => {
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(GET_POTENTIAL_MATCHES, { fetchPolicy: 'network-only' });
   const [sendRequest] = useMutation(SEND_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_DASHBOARD_DATA },
+      { query: GET_POTENTIAL_MATCHES }
+    ],
     onCompleted: () => refetch(),
     onError: (err) => console.error(err)
   });
@@ -77,18 +92,18 @@ const SuggestionsView = () => {
 
   const handleConnect = (userId) => sendRequest({ variables: { toUser: userId } });
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="max-w-4xl font-worksans">
       <h2 className="text-[44px] md:text-[56px] font-playfair font-extrabold italic text-zinc-900 leading-[1.1] mb-6">Find Study Buddies</h2>
       <p className="text-zinc-600 mb-8 text-lg">Discover compatible study partners matched to your profile</p>
       
-      {loading ? <p>Loading matches...</p> : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {matches.map((m, i) => (
-             <MatchCard key={i} match={m} onConnect={handleConnect} />
-          ))}
-        </div>
-      )}
+      <div className="grid md:grid-cols-2 gap-6">
+        {matches.map((m, i) => (
+           <MatchCard key={i} match={m} onConnect={handleConnect} onClick={(id) => navigate(`/buddies/${id}`)} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -124,6 +139,8 @@ const RequestsView = () => {
   const [rejectRequest] = useMutation(REJECT_BUDDY_REQUEST, { onCompleted: () => refetch() });
 
   const pendingRequests = (data?.getBuddyRequests || []).filter(r => r.status === "PENDING");
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="max-w-4xl font-worksans">
@@ -171,6 +188,8 @@ const ConnectionCard = ({ conn, onRemove }) => {
 const ConnectionsView = () => {
   const { data, loading } = useQuery(GET_CONNECTIONS, { fetchPolicy: 'network-only' });
   const connections = data?.getConnections || [];
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="max-w-4xl font-worksans">

@@ -9,25 +9,24 @@ function calculateScore(me, candidate) {
   const commonCourses = me.courses.filter(c => candidate.courses.includes(c));
   const commonTopics = me.topics.filter(t => candidate.topics.includes(t));
   
-  // Weights
-  score += commonCourses.length * 20;
-  score += commonTopics.length * 15;
+  // Scaled down weights
+  score += commonCourses.length * 12;
+  score += commonTopics.length * 8;
   
-  if (me.studyMode && candidate.studyMode && me.studyMode === candidate.studyMode) score += 10;
-  if (me.studyPace && candidate.studyPace && me.studyPace === candidate.studyPace) score += 10;
-  if (me.studyStyle && candidate.studyStyle && me.studyStyle === candidate.studyStyle) score += 10;
+  if (me.studyMode && candidate.studyMode && me.studyMode === candidate.studyMode) score += 7;
+  if (me.studyPace && candidate.studyPace && me.studyPace === candidate.studyPace) score += 7;
+  if (me.studyStyle && candidate.studyStyle && me.studyStyle === candidate.studyStyle) score += 7;
 
   // Simple availability overlap check (if availability exists)
   if (me.availability && candidate.availability && Array.isArray(me.availability) && Array.isArray(candidate.availability)) {
-     // rudimentary check: if they have at least one matching day
      const myDays = me.availability.map(s => s.dayOfWeek);
      const theirDays = candidate.availability.map(s => s.dayOfWeek);
      const overlap = myDays.filter(d => theirDays.includes(d));
-     if (overlap.length > 0) score += 15;
+     if (overlap.length > 0) score += 10;
   }
 
   return { 
-    score: Math.min(score, 100), // Cap at 100
+    score: Math.round(Math.min(score, 100)), // Cap at 100 and round nearest integer
     commonCourses,
     commonTopics
   }; 
@@ -111,11 +110,8 @@ const resolvers = {
         .filter(r => r.score > 0)
         .sort((a, b) => b.score - a.score);
 
-      if (sorted.length > 0) {
-        // Optional: publish match found event for the top match if it's new
-        publishEvent('MatchFound', { fromUser: user.id, toUser: sorted[0].userId, score: sorted[0].score });
-      }
-
+      // Removed publishEvent from here, as Queries should be side-effect free and not spam notifications.
+      
       return sorted;
     },
     

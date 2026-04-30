@@ -6,6 +6,7 @@ import { NavigationButtons } from '../components/profile/NavigationButtons';
 import { LearningStyleCard } from '../components/profile/LearningStyleCard';
 import { DayPill } from '../components/profile/DayPill';
 import { StudyGoalCard } from '../components/profile/StudyGoalCard';
+import { motion } from 'framer-motion';
 
 const UPDATE_PREFERENCES = gql`
   mutation UpdatePreferences($studyStyle: String, $studyPace: String, $studyMode: String, $groupSize: String) {
@@ -118,10 +119,16 @@ export default function StudyPreferences() {
     }
   };
 
-  const canContinue = selectedLearningStyle !== '' && selectedDays.length > 0 && selectedGoals.length > 0 && studyPace !== '' && studyMode !== '' && groupSize !== '';
+  const canContinue = selectedLearningStyle !== '' && selectedGoals.length > 0 && studyPace !== '' && studyMode !== '' && groupSize !== '';
 
   return (
-    <main className="overflow-hidden px-10 md:px-20 pt-10 md:pt-14 pb-20 md:pb-28 bg-white min-h-screen">
+    <motion.main 
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="overflow-hidden px-10 md:px-20 pt-10 md:pt-14 pb-20 md:pb-28 bg-white min-h-screen"
+    >
       <div className="flex flex-col w-full max-w-[1000px] mx-auto relative">
         <Header showProgress={true} progress={85} />
 
@@ -200,27 +207,6 @@ export default function StudyPreferences() {
         </section>
 
         <section className="mb-12">
-          <header className="flex gap-2 items-end mb-6">
-            <h2 className="text-2xl font-playfair font-bold text-zinc-900">
-              Days you are free
-            </h2>
-            <p className="text-lg font-worksans text-zinc-600 pb-[2px]">
-              (select all that apply)
-            </p>
-          </header>
-          <div className="flex flex-wrap gap-3">
-            {daysOfWeek.map((day) => (
-              <DayPill
-                key={day}
-                day={day}
-                isSelected={selectedDays.includes(day)}
-                onClick={() => handleDayToggle(day)}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-12">
           <h2 className="mb-6 text-2xl font-playfair font-bold text-zinc-900">
             What are your main study goals?
           </h2>
@@ -271,6 +257,6 @@ export default function StudyPreferences() {
           canContinue={canContinue}
         />
       </div>
-    </main>
+    </motion.main>
   );
 }

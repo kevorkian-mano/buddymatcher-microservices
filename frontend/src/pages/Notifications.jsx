@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import { GET_MY_NOTIFICATIONS } from '../graphql/queries/notificationQueries';
 import { MARK_NOTIFICATION_READ } from '../graphql/mutations/notificationMutations';
+import { JOIN_SESSION } from '../graphql/mutations/sessionMutations';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const Notifications = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState({ name: "Alex" });
 
   useEffect(() => {
@@ -18,6 +22,10 @@ const Notifications = () => {
   const [markRead] = useMutation(MARK_NOTIFICATION_READ, {
     onCompleted: () => refetch()
   });
+  
+  const [joinSession] = useMutation(JOIN_SESSION);
+
+  if (loading) return <LoadingSpinner />;
 
   const notificationsData = data?.getMyNotifications || [];
 
@@ -25,7 +33,72 @@ const Notifications = () => {
     markRead({ variables: { id } });
   };
 
+  const handleAcceptInvite = async (sessionId, notifId) => {
+    try {
+      await joinSession({ variables: { sessionId } });
+      alert("Successfully joined the session!");
+      handleMarkAsRead(notifId);
+    } catch(err) {
+      console.error(err);
+      alert("Error joining session or already joined.");
+      handleMarkAsRead(notifId);
+    }
+  };
+
+  const handleRejectInvite = (notifId) => {
+    handleMarkAsRead(notifId);
+  };
+
   const getActionButtons = (notification) => {
+    // Check if it's an invitation
+    if (notification.type === 'SESSION_INVITATION') {
+      const parts = notification.content.split('|||');
+      const sessionId = parts.length > 1 ? parts[1] : null;
+
+      if (!notification.read && sessionId) {
+        return (
+          <>
+            <button 
+              onClick={() => handleAcceptInvite(sessionId, notification.id)}
+              className="px-6 py-2.5 rounded-xl border border-green-500 bg-green-50 text-green-700 transition-colors font-medium hover:bg-green-100"
+            >
+              Join
+            </button>
+            <button 
+              onClick={() => navigate(`/sessions/${sessionId}`)}
+              className="px-6 py-2.5 rounded-xl border border-indigo-500 bg-indigo-50 text-indigo-700 transition-colors font-medium hover:bg-indigo-100"
+            >
+              View
+            </button>
+            <button 
+              onClick={() => handleRejectInvite(notification.id)}
+              className="px-6 py-2.5 rounded-xl border border-red-500 bg-red-50 text-red-700 transition-colors font-medium hover:bg-red-100"
+            >
+              Decline
+            </button>
+          </>
+        );
+      }
+      return null;
+    }
+
+    if (notification.type === 'BUDDY_REQUEST') {
+      if (!notification.read) {
+        return (
+          <button 
+            onClick={() => {
+              handleMarkAsRead(notification.id);
+              navigate('/matching');
+            }}
+            className="px-6 py-2.5 rounded-xl border border-blue-500 bg-blue-50 text-blue-700 transition-colors font-medium hover:bg-blue-100"
+          >
+            Review Request
+          </button>
+        );
+      }
+      return null;
+    }
+
     if (!notification.read) {
       return (
         <button 
@@ -78,7 +151,9 @@ const Notifications = () => {
                     
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <p className={`leading-relaxed pr-4 text-[17px] ${notification.read ? 'text-gray-500' : 'text-gray-600'}`}>
-                        {notification.content}
+                        {notification.type === 'SESSION_INVITATION' && notification.content.includes('|||') 
+                          ? notification.content.split('|||')[0]
+                          : notification.content}
                       </p>
                       
                       <div className="flex gap-3 shrink-0">

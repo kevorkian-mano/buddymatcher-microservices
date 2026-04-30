@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@apollo/client';
+import { GET_MY_NOTIFICATIONS } from '../../graphql/queries/notificationQueries';
 
 export const Sidebar = ({ currentView, setCurrentView }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const [showMatchingMenu, setShowMatchingMenu] = useState(false);
+
+  const { data: notifData } = useQuery(GET_MY_NOTIFICATIONS, {
+    pollInterval: 10000,
+    fetchPolicy: 'network-only'
+  });
+
+  const unreadCount = notifData?.getMyNotifications?.filter(n => !n.read)?.length || 0;
 
   useEffect(() => {
     if (currentPath === '/matching') {
@@ -91,7 +100,10 @@ export const Sidebar = ({ currentView, setCurrentView }) => {
                     className="object-contain shrink-0 aspect-square w-[23px]"
                     alt={`${item.label} icon`}
                   />
-                  <span className="text-zinc-800">{item.label}</span>
+                  <span className="text-zinc-800 flex-1">{item.label}</span>
+                  {item.label === 'Notifications' && unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">{unreadCount}</span>
+                  )}
                 </Link>
               )}
               

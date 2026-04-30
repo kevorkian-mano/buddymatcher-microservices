@@ -2,7 +2,7 @@ import React from 'react';
 import { LearningStyle } from './LearningStyle';
 import { StudyGoals } from './StudyGoals';
 import { TopicsList } from './TopicsList';
-import { FreeDays } from './FreeDays';
+
 
 export const StudyPreferencesTab = ({ profile }) => {
   const preferences = profile?.preferences || {};
@@ -36,7 +36,7 @@ export const StudyPreferencesTab = ({ profile }) => {
       <LearningStyle studyStyle={preferences.studyStyle} />
       <StudyGoals studyGoals={profile?.studyGoals || []} />
       <TopicsList topics={profile?.topics || []} />
-      <FreeDays />
+
     </div>
   );
 };
