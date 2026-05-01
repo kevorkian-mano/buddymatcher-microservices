@@ -18,39 +18,17 @@ async function startConsumer() {
 
       if (topic === 'UserPreferencesUpdated') {
         const { userId, courses, topics, preferences } = payload;
-        
-        const updateData = {};
-        const createData = { userId };
-        
-        if (courses !== undefined) {
-          const courseIds = courses.map(c => c.name || c.id);
-          updateData.courses = courseIds;
-          createData.courses = courseIds;
-        } else {
-          createData.courses = [];
-        }
-        
-        if (topics !== undefined) {
-          const topicNames = topics.map(t => t.name || t.id);
-          updateData.topics = topicNames;
-          createData.topics = topicNames;
-        } else {
-          createData.topics = [];
-        }
+
+        const courseIds  = courses  ? courses.map(c => c.name || c.id || c) : [];
+        const topicNames = topics   ? topics.map(t => t.name || t.id || t) : [];
+
+        const updateData = { courses: courseIds, topics: topicNames };
+        const createData = { userId, courses: courseIds, topics: topicNames };
 
         if (preferences) {
-          if (preferences.studyPace !== undefined) {
-            updateData.studyPace = preferences.studyPace;
-            createData.studyPace = preferences.studyPace;
-          }
-          if (preferences.studyMode !== undefined) {
-            updateData.studyMode = preferences.studyMode;
-            createData.studyMode = preferences.studyMode;
-          }
-          if (preferences.studyStyle !== undefined) {
-            updateData.studyStyle = preferences.studyStyle;
-            createData.studyStyle = preferences.studyStyle;
-          }
+          if (preferences.studyPace  !== undefined) { updateData.studyPace  = preferences.studyPace;  createData.studyPace  = preferences.studyPace; }
+          if (preferences.studyMode  !== undefined) { updateData.studyMode  = preferences.studyMode;  createData.studyMode  = preferences.studyMode; }
+          if (preferences.studyStyle !== undefined) { updateData.studyStyle = preferences.studyStyle; createData.studyStyle = preferences.studyStyle; }
         }
 
         await prisma.matchCandidate.upsert({
@@ -58,7 +36,7 @@ async function startConsumer() {
           update: updateData,
           create: createData
         });
-        console.log(`[Matching] Updated candidate profile for user ${userId}`);
+        console.log(`[Matching] Updated candidate profile for user ${userId} — courses: ${courseIds.length}, topics: ${topicNames.length}`);
       }
 
       if (topic === 'AvailabilityUpdated') {
@@ -66,12 +44,14 @@ async function startConsumer() {
         await prisma.matchCandidate.upsert({
           where: { userId },
           update: { availability: slots },
-          create: { 
-            userId, 
-            availability: slots 
-        }
+          create: {
+            userId,
+            courses:      [],
+            topics:       [],
+            availability: slots
+          }
         });
-        console.log(`[Matching] Updated availability for user ${userId}`);
+        console.log(`[Matching] Updated availability for user ${userId} — ${slots?.length ?? 0} slot(s)`);
       }
     },
   });
