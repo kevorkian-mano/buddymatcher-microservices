@@ -78,21 +78,6 @@ async function getAllMatchCandidates() {
   }
 }
 
-// Check whether a MATCH_FOUND notification already exists for userId about matchedUserId
-async function matchNotifExists(userId, matchedUserId) {
-  try {
-    const existing = await prisma.notification.findFirst({
-      where: {
-        userId,
-        type: 'MATCH_FOUND',
-        metadata: { path: ['matchedUserId'], equals: matchedUserId }
-      }
-    });
-    return !!existing;
-  } catch {
-    return false;
-  }
-}
 
 // ─── Consumer ───────────────────────────────────────────────────────────────
 async function startConsumer() {
@@ -212,20 +197,14 @@ async function startConsumer() {
             continue;
           }
 
-          // Dedup: skip if candidate was already notified about this specific userId
-          const alreadyNotified = await matchNotifExists(candidate.userId, userId);
-          if (alreadyNotified) {
-            console.log(`[Notification] Already notified ${candidate.userId} about ${userId} — skip`);
-            continue;
-          }
-
+          // Always notify — score may have changed since the last notification
           const reason = `You share ${commonCourses.length} course(s) and ${commonTopics.length} topic(s) in common.`;
 
           await prisma.notification.create({
             data: {
-              userId: candidate.userId,          // recipient is the OTHER user
+              userId: candidate.userId,    // recipient is the OTHER user
               type: 'MATCH_FOUND',
-              content: `New study buddy match! ${myName} has ${score}% compatibility with you. ${reason}`,
+              content: `Study buddy match! ${myName} has ${score}% compatibility with you. ${reason}`,
               metadata: {
                 matchedUserId: userId,
                 matchedUserName: myName,
