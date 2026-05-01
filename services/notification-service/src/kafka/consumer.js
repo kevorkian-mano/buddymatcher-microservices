@@ -79,13 +79,107 @@ async function getAllMatchCandidates() {
 }
 
 
+// ─── Per-user debounce for profile updates ───────────────────────────────────
+// When "Save Profile" is clicked, the frontend fires N sequential mutations
+// (updatePreferences, addTopic, removeTopic, addCourse, etc.), each emitting a
+// UserPreferencesUpdated event.  We coalesce them into a single scoring run
+// by waiting 4 seconds after the LAST event for a given userId.
+const DEBOUNCE_MS = 4000;
+const debounceTimers  = new Map(); // userId → setTimeout handle
+const debouncePayload = new Map(); // userId → latest payload snapshot
+
+// ─── Core matching logic — called once per debounced batch ──────────────────
+async function processMatchNotifications(userId, latestPayload, eventTopic) {
+  const { courses, topics: topicsPayload, preferences, slots } = latestPayload;
+
+  // Build "me" from the payload (avoids race condition with matching-service DB)
+  let meFromPayload = null;
+  if (eventTopic === 'UserPreferencesUpdated' && (courses !== undefined || topicsPayload !== undefined)) {
+    meFromPayload = {
+      userId,
+      courses:    courses       ? courses.map(c => c.name || c.id || c)       : [],
+      topics:     topicsPayload ? topicsPayload.map(t => t.name || t.id || t) : [],
+      studyPace:  preferences?.studyPace,
+      studyMode:  preferences?.studyMode,
+      studyStyle: preferences?.studyStyle,
+    };
+  }
+
+  const allCandidates = await getAllMatchCandidates();
+
+  const myDBProfile = allCandidates.find(c => c.userId === userId);
+  if (!myDBProfile && !meFromPayload) {
+    console.log(`[Notification] No profile data for userId=${userId}, skipping.`);
+    return;
+  }
+
+  const meBase = myDBProfile || { userId, courses: [], topics: [], availability: [] };
+  const meAvailability = eventTopic === 'AvailabilityUpdated' && slots
+    ? slots
+    : (meBase.availability
+        ? (typeof meBase.availability === 'string' ? JSON.parse(meBase.availability) : meBase.availability)
+        : []);
+
+  const me = meFromPayload
+    ? { ...meFromPayload, availability: meAvailability }
+    : { ...meBase,        availability: meAvailability };
+
+  const myName = await getUserName(userId);
+
+  // Exclude ACCEPTED/connected users
+  let connectedUserIds = new Set();
+  try {
+    const connRes = await matchPool.query(
+      `SELECT "fromUser", "toUser" FROM "BuddyRequest"
+       WHERE ("fromUser" = $1 OR "toUser" = $1) AND status = 'ACCEPTED'`,
+      [userId]
+    );
+    connRes.rows.forEach(row => {
+      connectedUserIds.add(row.fromUser === userId ? row.toUser : row.fromUser);
+    });
+  } catch (e) {
+    console.error('[Notification] Failed to query BuddyRequest connections:', e.message);
+  }
+
+  const others = allCandidates.filter(c => c.userId !== userId && !connectedUserIds.has(c.userId));
+  console.log(`[Notification] Scoring ${others.length} candidates for userId=${userId} (${connectedUserIds.size} connected excluded)`);
+
+  for (const candidate of others) {
+    const them = {
+      ...candidate,
+      availability: candidate.availability
+        ? (typeof candidate.availability === 'string' ? JSON.parse(candidate.availability) : candidate.availability)
+        : []
+    };
+
+    const { score, commonCourses, commonTopics } = calculateScore(me, them);
+
+    if (score <= 65) {
+      console.log(`[Notification] Score ${score}% ≤65 for ${candidate.userId} ← skip`);
+      continue;
+    }
+
+    const reason = `You share ${commonCourses.length} course(s) and ${commonTopics.length} topic(s) in common.`;
+
+    await prisma.notification.create({
+      data: {
+        userId: candidate.userId,
+        type: 'MATCH_FOUND',
+        content: `Study buddy match! ${myName} has ${score}% compatibility with you. ${reason}`,
+        metadata: { matchedUserId: userId, matchedUserName: myName, score, commonCourses, commonTopics, reason }
+      }
+    });
+    console.log(`[Notification] MATCH_FOUND → notified ${candidate.userId} about ${userId} (${score}%)`);
+  }
+}
+
 // ─── Consumer ───────────────────────────────────────────────────────────────
 async function startConsumer() {
   await consumer.connect();
   await consumer.subscribe({
     topics: [
-      'UserPreferencesUpdated',   // Triggers MatchFound logic
-      'AvailabilityUpdated',      // Also triggers MatchFound logic
+      'UserPreferencesUpdated',   // Triggers MatchFound logic (debounced)
+      'AvailabilityUpdated',      // Triggers MatchFound logic (immediate — own save button)
       'StudySessionCreated',
       'StudySessionUpdated',
       'StudySessionJoined',
@@ -108,115 +202,50 @@ async function startConsumer() {
       console.log(`[Notification] Received ${topic}`, payload);
 
       // ─────────────────────────────────────────────────────────────────
-      // 1. MatchFound — triggered by UserPreferencesUpdated or AvailabilityUpdated
+      // 1. MatchFound — UserPreferencesUpdated (debounced) or AvailabilityUpdated (immediate)
       //
-      //    CORRECT LOGIC:
-      //    - The user who changed their profile (userId) does NOT receive any notification.
-      //    - Users who are already ACCEPTED/connected to userId are also excluded.
-      //    - For every OTHER non-connected candidate:
-      //        * Calculate score. Use the INCOMING payload to avoid race conditions
-      //          (matching-service DB may not yet be updated).
-      //        * If score > 65%: notify the CANDIDATE.
-      //        * If score <= 65%: skip.
-      //    - Dedup: skip if this candidate has already been notified about userId
-      //      (prevents repeated pings for the same high-score pair).
+      //    UserPreferencesUpdated fires once per mutation (addCourse, removeTopic, etc.)
+      //    so a single "Save Profile" click can fire 5-10 events. We debounce them all
+      //    into ONE scoring run 4 seconds after the last event for that userId.
+      //
+      //    AvailabilityUpdated fires once per availability save button click, so it is
+      //    processed immediately without debouncing.
       // ─────────────────────────────────────────────────────────────────
-      if (topic === 'UserPreferencesUpdated' || topic === 'AvailabilityUpdated') {
-        const { userId, courses, topics: topicsPayload, preferences, slots } = payload;
+      if (topic === 'UserPreferencesUpdated') {
+        const { userId } = payload;
         if (!userId) return;
 
-        // ── Build "me" from the PAYLOAD (not DB) to avoid the race condition ──
-        // For AvailabilityUpdated, courses/topics come from DB later; only slots change.
-        // For UserPreferencesUpdated, courses/topics/prefs come directly in payload.
-        let meFromPayload = null;
-        if (topic === 'UserPreferencesUpdated' && (courses !== undefined || topicsPayload !== undefined)) {
-          meFromPayload = {
-            userId,
-            courses: courses ? courses.map(c => c.name || c.id || c) : [],
-            topics:  topicsPayload ? topicsPayload.map(t => t.name || t.id || t) : [],
-            studyPace:  preferences?.studyPace,
-            studyMode:  preferences?.studyMode,
-            studyStyle: preferences?.studyStyle,
-          };
+        // Update the stored payload snapshot for this user (always keep the latest)
+        debouncePayload.set(userId, payload);
+
+        // Reset the timer — if another event arrives within DEBOUNCE_MS, restart the clock
+        if (debounceTimers.has(userId)) {
+          clearTimeout(debounceTimers.get(userId));
         }
 
-        // ── Fetch all MatchCandidates for score calculation ──
-        const allCandidates = await getAllMatchCandidates();
-
-        // Resolve "me" — prefer payload data, fall back to DB
-        const myDBProfile = allCandidates.find(c => c.userId === userId);
-        if (!myDBProfile && !meFromPayload) {
-          console.log(`[Notification] No profile data for userId=${userId}, skipping.`);
-          return;
-        }
-
-        const meBase = myDBProfile || { userId, courses: [], topics: [], availability: [] };
-        const meAvailability = topic === 'AvailabilityUpdated' && slots
-          ? slots
-          : (meBase.availability
-              ? (typeof meBase.availability === 'string' ? JSON.parse(meBase.availability) : meBase.availability)
-              : []);
-
-        const me = meFromPayload
-          ? { ...meFromPayload, availability: meAvailability }
-          : { ...meBase,        availability: meAvailability };
-
-        const myName = await getUserName(userId);
-
-        // ── Fetch ACCEPTED connections for userId — exclude them ──
-        let connectedUserIds = new Set();
-        try {
-          const connRes = await matchPool.query(
-            `SELECT "fromUser", "toUser" FROM "BuddyRequest"
-             WHERE ("fromUser" = $1 OR "toUser" = $1) AND status = 'ACCEPTED'`,
-            [userId]
-          );
-          connRes.rows.forEach(row => {
-            connectedUserIds.add(row.fromUser === userId ? row.toUser : row.fromUser);
-          });
-        } catch (e) {
-          console.error('[Notification] Failed to query BuddyRequest connections:', e.message);
-        }
-
-        // ── Score every non-connected other user and notify if > 65% ──
-        const others = allCandidates.filter(c => c.userId !== userId && !connectedUserIds.has(c.userId));
-        console.log(`[Notification] Scoring ${others.length} candidates for userId=${userId} (${connectedUserIds.size} connected excluded)`);
-
-        for (const candidate of others) {
-          const them = {
-            ...candidate,
-            availability: candidate.availability
-              ? (typeof candidate.availability === 'string' ? JSON.parse(candidate.availability) : candidate.availability)
-              : []
-          };
-
-          const { score, commonCourses, commonTopics } = calculateScore(me, them);
-
-          if (score <= 65) {
-            console.log(`[Notification] Score ${score}% ≤65 for ${candidate.userId} ← skip`);
-            continue;
+        const timer = setTimeout(async () => {
+          debounceTimers.delete(userId);
+          const latestPayload = debouncePayload.get(userId);
+          debouncePayload.delete(userId);
+          console.log(`[Notification] Debounce settled for userId=${userId} — running match scoring`);
+          try {
+            await processMatchNotifications(userId, latestPayload, 'UserPreferencesUpdated');
+          } catch (err) {
+            console.error('[Notification] processMatchNotifications error:', err);
           }
+        }, DEBOUNCE_MS);
 
-          // Always notify — score may have changed since the last notification
-          const reason = `You share ${commonCourses.length} course(s) and ${commonTopics.length} topic(s) in common.`;
+        debounceTimers.set(userId, timer);
+        console.log(`[Notification] Debounce reset for userId=${userId} (waiting ${DEBOUNCE_MS}ms)`);
+        return; // Do not process now — wait for the debounce to settle
+      }
 
-          await prisma.notification.create({
-            data: {
-              userId: candidate.userId,    // recipient is the OTHER user
-              type: 'MATCH_FOUND',
-              content: `Study buddy match! ${myName} has ${score}% compatibility with you. ${reason}`,
-              metadata: {
-                matchedUserId: userId,
-                matchedUserName: myName,
-                score,
-                commonCourses,
-                commonTopics,
-                reason
-              }
-            }
-          });
-          console.log(`[Notification] MATCH_FOUND → notified ${candidate.userId} about ${userId} (${score}%)`);
-        }
+      if (topic === 'AvailabilityUpdated') {
+        const { userId } = payload;
+        if (!userId) return;
+        // Availability has its own save button → fires exactly one event → process immediately
+        console.log(`[Notification] AvailabilityUpdated for userId=${userId} — running match scoring immediately`);
+        await processMatchNotifications(userId, payload, 'AvailabilityUpdated');
       }
 
       // ─────────────────────────────────────────────────────────────────
