@@ -11,14 +11,16 @@ const DATABASE_URL_MATCHING = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy
 // Use a REAL bcrypt hash for the password "pass" so login succeeds
 const hash = (pwd) => pwd === "pass" ? "$2a$10$UwewS3G1TVx3soRfwhrXpu7It53vBHGwj7NujWUJ.EKV3CQz5jYxC" : "unknown"; 
 
+// Create 5 users with very similar profiles (Group A)
 const groupA_Users = [
-  { id: crypto.randomUUID(), name: "Alice Adams", email: "alice@stanford.edu", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Bob Barker", email: "bob@stanford.edu", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Charlie Chaplin", email: "charlie@stanford.edu", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Diana Prince", email: "diana@stanford.edu", passwordHash: hash("pass"), university: "Stanford University", major: "Software Engineering", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Eve Polastri", email: "eve@stanford.edu", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Senior" }
+  { id: crypto.randomUUID(), name: "Alice Adams 2", email: "alice@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
+  { id: crypto.randomUUID(), name: "Bob Barker 2", email: "bob@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
+  { id: crypto.randomUUID(), name: "Charlie Chaplin 2", email: "charlie@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
+  { id: crypto.randomUUID(), name: "Diana Prince 2", email: "diana@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Software Engineering", academicYear: "Junior" },
+  { id: crypto.randomUUID(), name: "Eve Polastri 2", email: "eve@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Senior" }
 ];
 
+// All 5 have same courses, topics, preferences, and availability - should be a perfect match cluster
 const groupA_Profiles = groupA_Users.map((u, i) => ({
   userId: u.id,
   courses: [
@@ -36,6 +38,8 @@ const groupA_Profiles = groupA_Users.map((u, i) => ({
 groupA_Profiles[4].preferences.studyStyle = "handson"; 
 groupA_Profiles[4].availability.push({ dayOfWeek: 2, startTime: "12:00", endTime: "14:00" }); 
 
+
+// Create 7 users with partially overlapping profiles (Group B)
 const groupB_Users = Array.from({ length: 7 }, (_, i) => ({
   id: crypto.randomUUID(),
   name: `Partial Matcher ${i + 6}`,
@@ -59,6 +63,8 @@ const groupB_Profiles = groupB_Users.map((u, i) => ({
   ]
 }));
 
+
+// Create 8 users with very different profiles (Group C)
 const groupC_Users = Array.from({ length: 8 }, (_, i) => ({
   id: crypto.randomUUID(),
   name: `History Buff ${i + 13}`,
@@ -80,6 +86,9 @@ const groupC_Profiles = groupC_Users.map((u, i) => ({
     { dayOfWeek: 5, startTime: "08:00", endTime: "10:00" }  
   ]
 }));
+
+
+
 
 const randomPaces = ["Fast", "Moderate", "Slow"];
 const randomModes = ["Online", "In-person", "Both"];
@@ -128,8 +137,22 @@ const random_Profiles = random_Users.map((u, i) => {
   };
 });
 
-const ALL_USERS = [...groupA_Users, ...groupB_Users, ...groupC_Users, ...random_Users];
-const ALL_PROFILES = [...groupA_Profiles, ...groupB_Profiles, ...groupC_Profiles, ...random_Profiles];
+const ALL_USERS = [
+  groupA_Users[0],
+   groupA_Users[1],
+  groupB_Users[0],
+
+  random_Users[0],
+  random_Users[1]
+];
+
+const ALL_PROFILES = [
+  groupA_Profiles[0],
+  groupB_Profiles[0],
+  groupC_Profiles[0],
+  random_Profiles[0],
+  random_Profiles[1]
+];
 
 async function seedUserDb() {
   const client = new Client({ connectionString: DATABASE_URL_USER });
