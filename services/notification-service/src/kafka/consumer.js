@@ -6,8 +6,9 @@ const { Pool } = require('pg');
 const prisma = new PrismaClient();
 
 // Raw pg pools for cross-DB lookups (user and matching service databases)
-const userPool = new Pool({ connectionString: process.env.USER_SERVICE_DB_URL || process.env.DATABASE_URL });
-const matchPool = new Pool({ connectionString: process.env.MATCH_SERVICE_DB_URL || process.env.DATABASE_URL });
+const userPool    = new Pool({ connectionString: process.env.USER_SERVICE_DB_URL    || process.env.DATABASE_URL });
+const matchPool   = new Pool({ connectionString: process.env.MATCH_SERVICE_DB_URL   || process.env.DATABASE_URL });
+const sessionPool = new Pool({ connectionString: process.env.SESSION_SERVICE_DB_URL || process.env.DATABASE_URL });
 
 const kafka = new Kafka({
   clientId: 'notification-service',
@@ -77,13 +78,20 @@ async function getAllMatchCandidates() {
   }
 }
 
-// Check whether a MATCH_FOUND notification already exists between this userId and matchedUserId
+// Check whether a MATCH_FOUND notification already exists for userId about matchedUserId
 async function matchNotifExists(userId, matchedUserId) {
-  const existing = await prisma.notification.findFirst({
-    where: { userId, type: 'MATCH_FOUND' }
-  });
-  if (!existing || !existing.metadata) return false;
-  return existing.metadata.matchedUserId === matchedUserId;
+  try {
+    const existing = await prisma.notification.findFirst({
+      where: {
+        userId,
+        type: 'MATCH_FOUND',
+        metadata: { path: ['matchedUserId'], equals: matchedUserId }
+      }
+    });
+    return !!existing;
+  } catch {
+    return false;
+  }
 }
 
 // ─── Consumer ───────────────────────────────────────────────────────────────
@@ -92,7 +100,9 @@ async function startConsumer() {
   await consumer.subscribe({
     topics: [
       'UserPreferencesUpdated',   // Triggers MatchFound logic
+      'AvailabilityUpdated',      // Also triggers MatchFound logic
       'StudySessionCreated',
+      'StudySessionUpdated',
       'StudySessionJoined',
       'BuddyRequestCreated',
       'SessionInvitationReceived'
@@ -113,28 +123,43 @@ async function startConsumer() {
       console.log(`[Notification] Received ${topic}`, payload);
 
       // ─────────────────────────────────────────────────────────────────
-      // 1. MatchFound — triggered by UserPreferencesUpdated
-      //    Score updated user against ALL candidates. Notify pairs > 65%.
-      //    Only once per pair (dedup via existing MATCH_FOUND notification).
+      // 1. MatchFound — triggered by UserPreferencesUpdated or AvailabilityUpdated
+      //
+      //    CORRECT LOGIC:
+      //    - The user who changed their profile (userId) does NOT receive any notification.
+      //    - For every OTHER user (candidate) in the DB:
+      //        * Calculate the score between userId and candidate.
+      //        * If score > 65%: notify the CANDIDATE that userId is a match for them.
+      //        * If score <= 65%: skip — no notification.
+      //    - Dedup: never send the same MATCH_FOUND notification twice to the same candidate
+      //      about the same userId.
       // ─────────────────────────────────────────────────────────────────
-      if (topic === 'UserPreferencesUpdated') {
-        const { userId } = payload;
+      if (topic === 'UserPreferencesUpdated' || topic === 'AvailabilityUpdated') {
+        const { userId, slots } = payload;
         if (!userId) return;
 
         const allCandidates = await getAllMatchCandidates();
         const myProfile = allCandidates.find(c => c.userId === userId);
-        if (!myProfile) return;
+        if (!myProfile) {
+          console.log(`[Notification] No MatchCandidate found for userId=${userId}, skipping.`);
+          return;
+        }
 
+        // Parse my availability once (use incoming slots if this is an AvailabilityUpdated event)
+        const parsedDBAvailability = myProfile.availability
+          ? (typeof myProfile.availability === 'string' ? JSON.parse(myProfile.availability) : myProfile.availability)
+          : [];
+        
+        const me = {
+          ...myProfile,
+          availability: topic === 'AvailabilityUpdated' && slots ? slots : parsedDBAvailability
+        };
+
+        const myName = await getUserName(userId);
+
+        // Iterate over ALL other candidates — notify THEM about userId if score > 65%
         const others = allCandidates.filter(c => c.userId !== userId);
-
         for (const candidate of others) {
-          // Parse JSON availability if stored as string
-          const me = {
-            ...myProfile,
-            availability: myProfile.availability
-              ? (typeof myProfile.availability === 'string' ? JSON.parse(myProfile.availability) : myProfile.availability)
-              : []
-          };
           const them = {
             ...candidate,
             availability: candidate.availability
@@ -143,53 +168,38 @@ async function startConsumer() {
           };
 
           const { score, commonCourses, commonTopics } = calculateScore(me, them);
-          if (score <= 65) continue;
+
+          // Skip if below threshold — candidate will NOT be notified
+          if (score <= 65) {
+            console.log(`[Notification] Score ${score}% below threshold for ${candidate.userId} ← skip`);
+            continue;
+          }
+
+          // Dedup: only notify if this candidate hasn't already been notified about userId
+          const alreadyNotified = await matchNotifExists(candidate.userId, userId);
+          if (alreadyNotified) {
+            console.log(`[Notification] Already notified ${candidate.userId} about ${userId} — skip`);
+            continue;
+          }
 
           const reason = `You share ${commonCourses.length} course(s) and ${commonTopics.length} topic(s) in common.`;
 
-          // Notify the updated user about the candidate (if not already notified)
-          const alreadyNotifiedMe = await matchNotifExists(userId, candidate.userId);
-          if (!alreadyNotifiedMe) {
-            const candidateName = await getUserName(candidate.userId);
-            await prisma.notification.create({
-              data: {
-                userId,
-                type: 'MATCH_FOUND',
-                content: `New study buddy match! ${candidateName} has ${score}% compatibility with you.`,
-                metadata: {
-                  matchedUserId: candidate.userId,
-                  matchedUserName: candidateName,
-                  score,
-                  commonCourses,
-                  commonTopics,
-                  reason
-                }
+          await prisma.notification.create({
+            data: {
+              userId: candidate.userId,          // <-- recipient is the OTHER user
+              type: 'MATCH_FOUND',
+              content: `New study buddy match! ${myName} has ${score}% compatibility with you.`,
+              metadata: {
+                matchedUserId: userId,           // <-- the user who changed their profile
+                matchedUserName: myName,
+                score,
+                commonCourses,
+                commonTopics,
+                reason
               }
-            });
-            console.log(`[Notification] MATCH_FOUND → ${userId} about ${candidate.userId} (${score}%)`);
-          }
-
-          // Notify the candidate about the updated user (if not already notified)
-          const alreadyNotifiedThem = await matchNotifExists(candidate.userId, userId);
-          if (!alreadyNotifiedThem) {
-            const myName = await getUserName(userId);
-            await prisma.notification.create({
-              data: {
-                userId: candidate.userId,
-                type: 'MATCH_FOUND',
-                content: `New study buddy match! ${myName} has ${score}% compatibility with you.`,
-                metadata: {
-                  matchedUserId: userId,
-                  matchedUserName: myName,
-                  score,
-                  commonCourses,
-                  commonTopics,
-                  reason
-                }
-              }
-            });
-            console.log(`[Notification] MATCH_FOUND → ${candidate.userId} about ${userId} (${score}%)`);
-          }
+            }
+          });
+          console.log(`[Notification] MATCH_FOUND → notified ${candidate.userId} about ${userId} (${score}%)`);
         }
       }
 
@@ -217,7 +227,41 @@ async function startConsumer() {
       }
 
       // ─────────────────────────────────────────────────────────────────
-      // 3. StudySessionJoined — 2 notifications: joiner + creator
+      // 3. StudySessionUpdated — notify joined participants (not creator)
+      // ─────────────────────────────────────────────────────────────────
+      if (topic === 'StudySessionUpdated') {
+        const { sessionId, creatorId, topic: sessionTitle } = payload;
+        if (!sessionId || !creatorId) return;
+
+        let participantIds = [];
+        try {
+          const res = await sessionPool.query(
+            'SELECT "userId" FROM "SessionParticipant" WHERE "sessionId" = $1 AND "userId" != $2',
+            [sessionId, creatorId]
+          );
+          participantIds = res.rows.map(r => r.userId);
+        } catch (e) {
+          console.error('[Notification] Failed to query SessionParticipant:', e.message);
+        }
+
+        const creatorName = await getUserName(creatorId);
+        const title       = sessionTitle || 'a study session';
+
+        for (const uid of participantIds) {
+          await prisma.notification.create({
+            data: {
+              userId: uid,
+              type: 'SESSION_UPDATED',
+              content: `${creatorName} updated the session: "${title}". Check the latest details.`,
+              metadata: { sessionId, sessionTitle: title, creatorId, creatorName }
+            }
+          });
+        }
+        console.log(`[Notification] SESSION_UPDATED: notified ${participantIds.length} participant(s) for session ${sessionId}`);
+      }
+
+      // ─────────────────────────────────────────────────────────────────
+      // 4. StudySessionJoined — 2 notifications: joiner + creator
       // ─────────────────────────────────────────────────────────────────
       if (topic === 'StudySessionJoined') {
         const { sessionId, userId: joinerId, creatorId, topic: sessionTitle } = payload;
