@@ -127,38 +127,76 @@ async function startConsumer() {
       //
       //    CORRECT LOGIC:
       //    - The user who changed their profile (userId) does NOT receive any notification.
-      //    - For every OTHER user (candidate) in the DB:
-      //        * Calculate the score between userId and candidate.
-      //        * If score > 65%: notify the CANDIDATE that userId is a match for them.
-      //        * If score <= 65%: skip — no notification.
-      //    - Dedup: never send the same MATCH_FOUND notification twice to the same candidate
-      //      about the same userId.
+      //    - Users who are already ACCEPTED/connected to userId are also excluded.
+      //    - For every OTHER non-connected candidate:
+      //        * Calculate score. Use the INCOMING payload to avoid race conditions
+      //          (matching-service DB may not yet be updated).
+      //        * If score > 65%: notify the CANDIDATE.
+      //        * If score <= 65%: skip.
+      //    - Dedup: skip if this candidate has already been notified about userId
+      //      (prevents repeated pings for the same high-score pair).
       // ─────────────────────────────────────────────────────────────────
       if (topic === 'UserPreferencesUpdated' || topic === 'AvailabilityUpdated') {
-        const { userId, slots } = payload;
+        const { userId, courses, topics: topicsPayload, preferences, slots } = payload;
         if (!userId) return;
 
+        // ── Build "me" from the PAYLOAD (not DB) to avoid the race condition ──
+        // For AvailabilityUpdated, courses/topics come from DB later; only slots change.
+        // For UserPreferencesUpdated, courses/topics/prefs come directly in payload.
+        let meFromPayload = null;
+        if (topic === 'UserPreferencesUpdated' && (courses !== undefined || topicsPayload !== undefined)) {
+          meFromPayload = {
+            userId,
+            courses: courses ? courses.map(c => c.name || c.id || c) : [],
+            topics:  topicsPayload ? topicsPayload.map(t => t.name || t.id || t) : [],
+            studyPace:  preferences?.studyPace,
+            studyMode:  preferences?.studyMode,
+            studyStyle: preferences?.studyStyle,
+          };
+        }
+
+        // ── Fetch all MatchCandidates for score calculation ──
         const allCandidates = await getAllMatchCandidates();
-        const myProfile = allCandidates.find(c => c.userId === userId);
-        if (!myProfile) {
-          console.log(`[Notification] No MatchCandidate found for userId=${userId}, skipping.`);
+
+        // Resolve "me" — prefer payload data, fall back to DB
+        const myDBProfile = allCandidates.find(c => c.userId === userId);
+        if (!myDBProfile && !meFromPayload) {
+          console.log(`[Notification] No profile data for userId=${userId}, skipping.`);
           return;
         }
 
-        // Parse my availability once (use incoming slots if this is an AvailabilityUpdated event)
-        const parsedDBAvailability = myProfile.availability
-          ? (typeof myProfile.availability === 'string' ? JSON.parse(myProfile.availability) : myProfile.availability)
-          : [];
-        
-        const me = {
-          ...myProfile,
-          availability: topic === 'AvailabilityUpdated' && slots ? slots : parsedDBAvailability
-        };
+        const meBase = myDBProfile || { userId, courses: [], topics: [], availability: [] };
+        const meAvailability = topic === 'AvailabilityUpdated' && slots
+          ? slots
+          : (meBase.availability
+              ? (typeof meBase.availability === 'string' ? JSON.parse(meBase.availability) : meBase.availability)
+              : []);
+
+        const me = meFromPayload
+          ? { ...meFromPayload, availability: meAvailability }
+          : { ...meBase,        availability: meAvailability };
 
         const myName = await getUserName(userId);
 
-        // Iterate over ALL other candidates — notify THEM about userId if score > 65%
-        const others = allCandidates.filter(c => c.userId !== userId);
+        // ── Fetch ACCEPTED connections for userId — exclude them ──
+        let connectedUserIds = new Set();
+        try {
+          const connRes = await matchPool.query(
+            `SELECT "fromUser", "toUser" FROM "BuddyRequest"
+             WHERE ("fromUser" = $1 OR "toUser" = $1) AND status = 'ACCEPTED'`,
+            [userId]
+          );
+          connRes.rows.forEach(row => {
+            connectedUserIds.add(row.fromUser === userId ? row.toUser : row.fromUser);
+          });
+        } catch (e) {
+          console.error('[Notification] Failed to query BuddyRequest connections:', e.message);
+        }
+
+        // ── Score every non-connected other user and notify if > 65% ──
+        const others = allCandidates.filter(c => c.userId !== userId && !connectedUserIds.has(c.userId));
+        console.log(`[Notification] Scoring ${others.length} candidates for userId=${userId} (${connectedUserIds.size} connected excluded)`);
+
         for (const candidate of others) {
           const them = {
             ...candidate,
@@ -169,13 +207,12 @@ async function startConsumer() {
 
           const { score, commonCourses, commonTopics } = calculateScore(me, them);
 
-          // Skip if below threshold — candidate will NOT be notified
           if (score <= 65) {
-            console.log(`[Notification] Score ${score}% below threshold for ${candidate.userId} ← skip`);
+            console.log(`[Notification] Score ${score}% ≤65 for ${candidate.userId} ← skip`);
             continue;
           }
 
-          // Dedup: only notify if this candidate hasn't already been notified about userId
+          // Dedup: skip if candidate was already notified about this specific userId
           const alreadyNotified = await matchNotifExists(candidate.userId, userId);
           if (alreadyNotified) {
             console.log(`[Notification] Already notified ${candidate.userId} about ${userId} — skip`);
@@ -186,11 +223,11 @@ async function startConsumer() {
 
           await prisma.notification.create({
             data: {
-              userId: candidate.userId,          // <-- recipient is the OTHER user
+              userId: candidate.userId,          // recipient is the OTHER user
               type: 'MATCH_FOUND',
-              content: `New study buddy match! ${myName} has ${score}% compatibility with you.`,
+              content: `New study buddy match! ${myName} has ${score}% compatibility with you. ${reason}`,
               metadata: {
-                matchedUserId: userId,           // <-- the user who changed their profile
+                matchedUserId: userId,
                 matchedUserName: myName,
                 score,
                 commonCourses,
