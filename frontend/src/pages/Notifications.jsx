@@ -149,7 +149,7 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
           <span className="text-sm text-gray-400 font-worksans capitalize">{busy}</span>
         )}
 
-        {!n.read && !busy && !['MATCH_FOUND','SESSION_CREATED','SESSION_JOINED','BUDDY_REQUEST','SESSION_INVITATION'].includes(n.type) && (
+        {!n.read && !busy && (
           <button onClick={() => onMarkRead(n.id)}
             className="px-5 py-2 rounded-full text-sm font-medium border border-gray-300 text-zinc-700 hover:bg-gray-50 font-worksans transition-colors">
             Mark Read
