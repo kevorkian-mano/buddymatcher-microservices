@@ -250,7 +250,8 @@ const BuddyDetails = () => {
                     </div>
                   )}
 
-              </div>
+              </div>  {/* end flex flex-col gap-6 */}
+              </div>  {/* end w-full mt-10 */}
             </main>
           </div>
         </div>
