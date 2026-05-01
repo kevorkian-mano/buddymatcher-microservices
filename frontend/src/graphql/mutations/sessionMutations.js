@@ -7,6 +7,7 @@ export const CREATE_SESSION = gql`
     $duration: Int!
     $sessionType: String!
     $location: String
+    $contactInfo: String
     $invitedUserIds: [ID!]
   ) {
     createSession(
@@ -15,11 +16,43 @@ export const CREATE_SESSION = gql`
       duration: $duration
       sessionType: $sessionType
       location: $location
+      contactInfo: $contactInfo
       invitedUserIds: $invitedUserIds
     ) {
       id
       topic
       startTime
+      creatorContactInfo
+    }
+  }
+`;
+
+export const UPDATE_SESSION = gql`
+  mutation UpdateSession(
+    $sessionId: ID!
+    $topic: String
+    $startTime: String
+    $duration: Int
+    $sessionType: String
+    $location: String
+    $contactInfo: String
+  ) {
+    updateSession(
+      sessionId: $sessionId
+      topic: $topic
+      startTime: $startTime
+      duration: $duration
+      sessionType: $sessionType
+      location: $location
+      contactInfo: $contactInfo
+    ) {
+      id
+      topic
+      startTime
+      duration
+      sessionType
+      location
+      creatorContactInfo
     }
   }
 `;

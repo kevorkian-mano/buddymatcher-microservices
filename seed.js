@@ -1,5 +1,7 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
+const { Kafka } = require('kafkajs');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
 // Database URLs
@@ -7,152 +9,137 @@ const DATABASE_URL_USER = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mou
 const DATABASE_URL_PROFILE = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/profile_db?sslmode=require";
 const DATABASE_URL_AVAILABILITY = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/availability_db?sslmode=require";
 const DATABASE_URL_MATCHING = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/matching_db?sslmode=require";
+const DATABASE_URL_SESSION = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/session_db?sslmode=require";
+const DATABASE_URL_NOTIFICATION = "postgresql://neondb_owner:npg_pElvhXLJ0S7Y@ep-shy-mouse-adic3083.c-2.us-east-1.aws.neon.tech/notification_db?sslmode=require";
 
 // Use a REAL bcrypt hash for the password "pass" so login succeeds
 const hash = (pwd) => pwd === "pass" ? "$2a$10$UwewS3G1TVx3soRfwhrXpu7It53vBHGwj7NujWUJ.EKV3CQz5jYxC" : "unknown"; 
 
-// Create 5 users with very similar profiles (Group A)
-const groupA_Users = [
-  { id: crypto.randomUUID(), name: "Alice Adams 2", email: "alice@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Bob Barker 2", email: "bob@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Charlie Chaplin 2", email: "charlie@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Diana Prince 2", email: "diana@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Software Engineering", academicYear: "Junior" },
-  { id: crypto.randomUUID(), name: "Eve Polastri 2", email: "eve@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Senior" }
+const aliceId = crypto.randomUUID();
+const bobId = crypto.randomUUID();
+
+const aliceAndBobUsers = [
+  { id: aliceId, name: "Alice Adams", email: "alice@example.com", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Junior" },
+  { id: bobId, name: "Bob Builder", email: "bob@example.com", passwordHash: hash("pass"), university: "Stanford University", major: "Computer Science", academicYear: "Junior" }
 ];
 
-// All 5 have same courses, topics, preferences, and availability - should be a perfect match cluster
-const groupA_Profiles = groupA_Users.map((u, i) => ({
+const aliceAndBobProfiles = aliceAndBobUsers.map(u => ({
   userId: u.id,
   courses: [
     { name: "Data Structures", code: "CS201" },
-    { name: "Operating Systems", code: "CS301" }
+    { name: "Operating Systems", code: "CS301" },
+    { name: "Databases", code: "CS401" },
+    { name: "Algorithms", code: "CS402" }
   ],
-  topics: [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }],
-  preferences: { studyPace: "Fast", studyMode: "In-person", groupSize: "Small Group", studyStyle: "reading" },
+  topics: [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }, { name: "SQL" }],
+  preferences: { studyPace: "Moderate", studyMode: "In-person", groupSize: "Small Group", studyStyle: "visual" },
   availability: [
     { dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }, 
     { dayOfWeek: 3, startTime: "18:00", endTime: "20:00" }  
   ]
 }));
 
-groupA_Profiles[4].preferences.studyStyle = "handson"; 
-groupA_Profiles[4].availability.push({ dayOfWeek: 2, startTime: "12:00", endTime: "14:00" }); 
+// We need 20 other users in clusters.
+const firstNames = ["Charlie", "Diana", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy", "Mallory", "Niaj", "Oscar", "Peggy", "Romeo", "Sybil", "Trent", "Victor", "Walter", "Xavier", "Yvonne", "Zelda"];
+const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin"];
 
+const clusteredUsers = [];
+const clusteredProfiles = [];
 
-// Create 7 users with partially overlapping profiles (Group B)
-const groupB_Users = Array.from({ length: 7 }, (_, i) => ({
-  id: crypto.randomUUID(),
-  name: `Partial Matcher ${i + 6}`,
-  email: `partial${i + 6}@mit.edu`,
-  passwordHash: hash("pass"),
-  university: "MIT", major: "Computer Science", academicYear: "Sophomore"
-}));
+for (let i = 0; i < 20; i++) {
+  const id = crypto.randomUUID();
+  clusteredUsers.push({
+    id,
+    name: `${firstNames[i]} ${lastNames[i]}`,
+    email: `user${i}@example.com`,
+    passwordHash: hash("pass"),
+    university: "Stanford University",
+    major: "Computer Science",
+    academicYear: "Sophomore"
+  });
 
-const groupB_Profiles = groupB_Users.map((u, i) => ({
-  userId: u.id,
-  courses: [
-    { name: "Data Structures", code: "CS201" }, 
-    { name: "Artificial Intelligence", code: "CS501" },
-    { name: "Databases", code: "CS401" }
-  ],
-  topics: [{ name: "Trees" }, { name: "Neural Networks" }, { name: "SQL" }], 
-  preferences: { studyPace: "Moderate", studyMode: "Online", groupSize: "Large Group", studyStyle: "visual" },
-  availability: [
-    { dayOfWeek: 1, startTime: "19:00", endTime: "21:00" }, 
-    { dayOfWeek: 4, startTime: "14:00", endTime: "16:00" }  
-  ]
-}));
+  let profile = { userId: id, courses: [], topics: [], preferences: {}, availability: [] };
 
+  if (i < 5) {
+    // Cluster 1 (High Match - Score ~91 with Alice/Bob)
+    profile.courses = [{ name: "Data Structures", code: "CS201" }, { name: "Operating Systems", code: "CS301" }, { name: "Databases", code: "CS401" }];
+    profile.topics = [{ name: "Graphs" }, { name: "Trees" }, { name: "Sorting" }];
+    profile.preferences = { studyPace: "Moderate", studyMode: "In-person", groupSize: "Large Group", studyStyle: "visual" };
+    profile.availability = [{ dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }];
+  } else if (i < 12) {
+    // Cluster 2 (Medium Match - Score ~72 with Alice/Bob)
+    profile.courses = [{ name: "Data Structures", code: "CS201" }, { name: "Operating Systems", code: "CS301" }];
+    profile.topics = [{ name: "Graphs" }, { name: "Trees" }, { name: "SQL" }];
+    profile.preferences = { studyPace: "Moderate", studyMode: "Online", groupSize: "Small Group", studyStyle: "visual" };
+    profile.availability = [{ dayOfWeek: 1, startTime: "18:00", endTime: "20:00" }];
+  } else if (i < 18) {
+    // Cluster 3 (Borderline Match - Score ~66 with Alice/Bob)
+    profile.courses = [{ name: "Data Structures", code: "CS201" }, { name: "Operating Systems", code: "CS301" }, { name: "Algorithms", code: "CS402" }];
+    profile.topics = [{ name: "Graphs" }, { name: "SQL" }];
+    profile.preferences = { studyPace: "Moderate", studyMode: "In-person", groupSize: "Solo", studyStyle: "auditory" };
+    profile.availability = [{ dayOfWeek: 2, startTime: "10:00", endTime: "12:00" }];
+  } else {
+    // Cluster 4 (Low Match < 65 - Score ~20 with Alice/Bob) - exactly 2 users
+    profile.courses = [{ name: "Data Structures", code: "CS201" }];
+    profile.topics = [{ name: "Graphs" }];
+    profile.preferences = { studyPace: "Slow", studyMode: "Online", groupSize: "Solo", studyStyle: "auditory" };
+    profile.availability = [{ dayOfWeek: 2, startTime: "10:00", endTime: "12:00" }];
+  }
+  clusteredProfiles.push(profile);
+}
 
-// Create 8 users with very different profiles (Group C)
-const groupC_Users = Array.from({ length: 8 }, (_, i) => ({
-  id: crypto.randomUUID(),
-  name: `History Buff ${i + 13}`,
-  email: `history${i + 13}@ucberkeley.edu`,
-  passwordHash: hash("pass"),
-  university: "UC Berkeley", major: "History", academicYear: "Senior"
-}));
+const ALL_USERS = [...aliceAndBobUsers, ...clusteredUsers];
+const ALL_PROFILES = [...aliceAndBobProfiles, ...clusteredProfiles];
 
-const groupC_Profiles = groupC_Users.map((u, i) => ({
-  userId: u.id,
-  courses: [
-    { name: "European History", code: "HIST101" },
-    { name: "Art of the Renaissance", code: "ART202" }
-  ],
-  topics: [{ name: "The Medici Family" }, { name: "Painting techniques" }, { name: "Poetry" }],
-  preferences: { studyPace: "Slow", studyMode: "Both", groupSize: "Small Group", studyStyle: "auditory" },
-  availability: [
-    { dayOfWeek: 2, startTime: "08:00", endTime: "10:00" }, 
-    { dayOfWeek: 5, startTime: "08:00", endTime: "10:00" }  
-  ]
-}));
+async function clearTable(client, table) {
+  try {
+    await client.query(`DELETE FROM "${table}";`);
+    console.log(`Cleared table ${table}`);
+  } catch (err) {
+    console.error(`Error clearing ${table}:`, err.message);
+  }
+}
 
-
-
-
-const randomPaces = ["Fast", "Moderate", "Slow"];
-const randomModes = ["Online", "In-person", "Both"];
-const randomSizes = ["Small Group", "Large Group"];
-const randomStyles = ["visual", "auditory", "reading", "handson"];
-const possibleCourses = [
-  { name: "Data Structures", code: "CS201" },
-  { name: "Operating Systems", code: "CS301" },
-  { name: "Artificial Intelligence", code: "CS501" },
-  { name: "Databases", code: "CS401" },
-  { name: "Machine Learning", code: "CS502" },
-  { name: "Calculus", code: "MATH101" },
-  { name: "Physics", code: "PHY101" },
-  { name: "Linear Algebra", code: "MATH201" }
-];
-const possibleTopics = ["Graphs", "Trees", "Sorting", "Neural Networks", "SQL", "Derivatives", "Kinematics", "React", "NodeJS", "Dynamic Programming"];
-
-const random_Users = Array.from({ length: 40 }, (_, i) => ({
-  id: crypto.randomUUID(),
-  name: `Random Student ${i + 1}`,
-  email: `student${i + 40}@college.edu`,
-  passwordHash: hash("pass"),
-  university: "Global University", major: "Computer Science", academicYear: "Sophomore"
-}));
-
-const random_Profiles = random_Users.map((u, i) => {
-  // pick 1-4 random courses
-  const myCourses = possibleCourses.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 4) + 1);
-  // pick 1-5 random topics
-  const myTopics = possibleTopics.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 5) + 1).map(t => ({ name: t }));
+async function clearDatabases() {
+  console.log('Clearing databases...');
   
-  return {
-    userId: u.id,
-    courses: myCourses,
-    topics: myTopics,
-    preferences: { 
-      studyPace: randomPaces[Math.floor(Math.random() * randomPaces.length)], 
-      studyMode: randomModes[Math.floor(Math.random() * randomModes.length)], 
-      groupSize: randomSizes[Math.floor(Math.random() * randomSizes.length)], 
-      studyStyle: randomStyles[Math.floor(Math.random() * randomStyles.length)] 
-    },
-    availability: [
-      { dayOfWeek: Math.floor(Math.random() * 7), startTime: "10:00", endTime: "12:00" },
-      { dayOfWeek: Math.floor(Math.random() * 7), startTime: "14:00", endTime: "16:00" }
-    ]
-  };
-});
+  const userClient = new Client({ connectionString: DATABASE_URL_USER });
+  await userClient.connect();
+  await clearTable(userClient, "User");
+  await userClient.end();
 
-const ALL_USERS = [
-  groupA_Users[0],
-   groupA_Users[1],
-  groupB_Users[0],
+  const profileClient = new Client({ connectionString: DATABASE_URL_PROFILE });
+  await profileClient.connect();
+  await clearTable(profileClient, "Course");
+  await clearTable(profileClient, "Topic");
+  await clearTable(profileClient, "StudyGoal");
+  await clearTable(profileClient, "Preferences");
+  await clearTable(profileClient, "Profile");
+  await profileClient.end();
 
-  random_Users[0],
-  random_Users[1]
-];
+  const availabilityClient = new Client({ connectionString: DATABASE_URL_AVAILABILITY });
+  await availabilityClient.connect();
+  await clearTable(availabilityClient, "AvailabilitySlot");
+  await clearTable(availabilityClient, "FreeDay");
+  await availabilityClient.end();
 
-const ALL_PROFILES = [
-  groupA_Profiles[0],
-  groupB_Profiles[0],
-  groupC_Profiles[0],
-  random_Profiles[0],
-  random_Profiles[1]
-];
+  const matchingClient = new Client({ connectionString: DATABASE_URL_MATCHING });
+  await matchingClient.connect();
+  await clearTable(matchingClient, "BuddyRequest");
+  await clearTable(matchingClient, "MatchCandidate");
+  await matchingClient.end();
+
+  const sessionClient = new Client({ connectionString: DATABASE_URL_SESSION });
+  await sessionClient.connect();
+  await clearTable(sessionClient, "StudySessionParticipant");
+  await clearTable(sessionClient, "StudySession");
+  await sessionClient.end();
+
+  const notificationClient = new Client({ connectionString: DATABASE_URL_NOTIFICATION });
+  await notificationClient.connect();
+  await clearTable(notificationClient, "Notification");
+  await notificationClient.end();
+}
 
 async function seedUserDb() {
   const client = new Client({ connectionString: DATABASE_URL_USER });
@@ -246,8 +233,42 @@ async function seedMatchingDb() {
   await client.end();
 }
 
+async function triggerMatchingEvents() {
+  console.log('Publishing UserPreferencesUpdated events to trigger matching/notification logic...');
+  const kafka = new Kafka({ clientId: 'seed-producer', brokers: [process.env.KAFKA_BROKER || 'localhost:9092'] });
+  const producer = kafka.producer();
+  await producer.connect();
+
+  for (const profileData of ALL_PROFILES) {
+    const msg = {
+      event: 'UserPreferencesUpdated',
+      timestamp: new Date().toISOString(),
+      producer: 'seed-script',
+      correlationId: uuidv4(),
+      payload: {
+        userId: profileData.userId,
+        courses: profileData.courses.map(c => ({ name: c.name })),
+        topics:  profileData.topics.map(t => ({ name: t.name })),
+        preferences: profileData.preferences ? {
+          studyPace:  profileData.preferences.studyPace,
+          studyMode:  profileData.preferences.studyMode,
+          studyStyle: profileData.preferences.studyStyle
+        } : null
+      }
+    };
+    
+    await producer.send({ topic: 'UserPreferencesUpdated', messages: [{ value: JSON.stringify(msg) }] });
+    await new Promise(r => setTimeout(r, 100)); // slight delay
+  }
+
+  await producer.disconnect();
+  console.log('Events published.');
+}
+
 async function run() {
   try {
+    await clearDatabases();
+    console.log('---');
     await seedUserDb();
     console.log('User DB Seeded.');
     await seedProfileDb();
@@ -256,7 +277,8 @@ async function run() {
     console.log('Availability DB Seeded.');
     await seedMatchingDb();
     console.log('Matching DB Seeded.');
-    console.log('All done!');
+    await triggerMatchingEvents();
+    console.log('All done! You can now login as alice@example.com or bob@example.com with password "pass".');
   } catch (err) {
     console.error('Migration failed', err);
   }

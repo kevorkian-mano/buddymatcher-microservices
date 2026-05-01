@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_SESSIONS } from '../graphql/queries/sessionQueries';
-import { CREATE_SESSION, JOIN_SESSION, TERMINATE_SESSION } from '../graphql/mutations/sessionMutations';
+import { GET_SESSIONS, GET_SESSION_BY_ID } from '../graphql/queries/sessionQueries';
+import { CREATE_SESSION, UPDATE_SESSION, JOIN_SESSION, TERMINATE_SESSION } from '../graphql/mutations/sessionMutations';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 
 import { GET_USER_BY_ID, GET_ALL_USERS } from '../graphql/queries/userQueries';
@@ -27,6 +27,7 @@ const Sessions = () => {
   const [mainTab, setMainTab] = useState('available'); // 'available', 'joined', 'created'
   const [subTab, setSubTab] = useState('upcoming');     // 'upcoming', 'completed', 'all'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editSession, setEditSession] = useState(null); // session object to edit
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -39,7 +40,7 @@ const Sessions = () => {
     fetchPolicy: 'network-only',
     errorPolicy: 'all'
   });
-  
+
   const [joinSession] = useMutation(JOIN_SESSION, {
     onCompleted: () => refetch()
   });
@@ -56,12 +57,12 @@ const Sessions = () => {
       const d = new Date(parseInt(session.startTime) || session.startTime);
       const isPast = session.status === 'COMPLETED' || d.getTime() < new Date().getTime();
       const hasJoined = session.participants?.some(p => p.userId === user.id);
-      
+
       return {
         id: session.id,
         title: session.topic || "Study Session",
         date: d.toLocaleDateString(),
-        time: `${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ${session.duration} mins`,
+        time: `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${session.duration} mins`,
         location: session.location || "TBD",
         creatorId: session.creatorId,
         participants: session.participants?.length || 0,
@@ -75,7 +76,7 @@ const Sessions = () => {
   };
 
   const allSessions = getSessionsList();
-  
+
   const createdByMeSessions = allSessions.filter(s => s.isCreator);
   const availableSessions = allSessions.filter(s => !s.isPast && !s.isCreator && !s.hasJoined);
   const joinedSessions = allSessions.filter(s => s.hasJoined && !s.isCreator);
@@ -92,17 +93,17 @@ const Sessions = () => {
   const handleJoin = async (id) => {
     try {
       await joinSession({ variables: { sessionId: id } });
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       alert('Error joining session');
     }
   };
 
   const handleTerminate = async (id) => {
-    if(window.confirm('Are you sure you want to terminate this session early? This will mark it as Completed.')){
+    if (window.confirm('Are you sure you want to terminate this session early? This will mark it as Completed.')) {
       try {
         await terminateSession({ variables: { sessionId: id, status: 'COMPLETED' } });
-      } catch(err) {
+      } catch (err) {
         console.error(err);
         alert('Error terminating session');
       }
@@ -127,13 +128,13 @@ const Sessions = () => {
           {/* Main Content Area */}
           <div className="flex flex-col flex-1 w-full min-w-0 px-4 md:px-8">
             <main className="flex-1 font-worksans max-w-5xl">
-              
+
               {/* Header row */}
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-[44px] md:text-[56px] font-playfair font-extrabold italic text-zinc-900 leading-[1.1]">
                   Study Sessions
                 </h2>
-                <button 
+                <button
                   onClick={() => setIsModalOpen(true)}
                   className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors text-gray-800 font-medium"
                 >
@@ -141,22 +142,22 @@ const Sessions = () => {
                 </button>
               </div>
               <p className="text-gray-600 mb-8 text-lg font-medium">{displayData.length} sessions</p>
-              
+
               {/* Main Tabs */}
               <div className="flex space-x-4 mb-6 border-b border-gray-200 pb-2">
-                <button 
+                <button
                   onClick={() => setMainTab('available')}
                   className={`px-4 py-2 font-medium border-b-2 transition-colors ${mainTab === 'available' ? 'border-[#d6a546] text-black text-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                 >
                   Available to Join
                 </button>
-                <button 
+                <button
                   onClick={() => setMainTab('joined')}
                   className={`px-4 py-2 font-medium border-b-2 transition-colors ${mainTab === 'joined' ? 'border-[#d6a546] text-black text-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                 >
                   Joined Sessions
                 </button>
-                <button 
+                <button
                   onClick={() => setMainTab('created')}
                   className={`px-4 py-2 font-medium border-b-2 transition-colors ${mainTab === 'created' ? 'border-[#d6a546] text-black text-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                 >
@@ -167,19 +168,19 @@ const Sessions = () => {
               {/* Sub Tabs (Only for Joined) */}
               {mainTab === 'joined' && (
                 <div className="flex space-x-4 mb-8">
-                  <button 
+                  <button
                     onClick={() => setSubTab('upcoming')}
                     className={`px-8 py-2.5 rounded-xl border transition-colors text-sm ${subTab === 'upcoming' ? 'bg-[#FBE58D] border-[#d6a546] font-medium' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
                   >
                     Upcoming ({joinedSessions.filter(s => !s.isPast).length})
                   </button>
-                  <button 
+                  <button
                     onClick={() => setSubTab('completed')}
                     className={`px-8 py-2.5 rounded-xl border transition-colors text-sm ${subTab === 'completed' ? 'bg-[#FBE58D] border-[#d6a546] font-medium' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
                   >
                     Completed ({joinedSessions.filter(s => s.isPast).length})
                   </button>
-                  <button 
+                  <button
                     onClick={() => setSubTab('all')}
                     className={`px-8 py-2.5 rounded-xl border transition-colors text-sm ${subTab === 'all' ? 'bg-[#FBE58D] border-[#d6a546] font-medium' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
                   >
@@ -187,14 +188,14 @@ const Sessions = () => {
                   </button>
                 </div>
               )}
-              
+
               {mainTab !== 'joined' && (
-                  <hr className="border-t-[1.5px] border-gray-300 mb-8 mt-4" />
+                <hr className="border-t-[1.5px] border-gray-300 mb-8 mt-4" />
               )}              {/* Session Cards list */}
               <div className="space-y-6">
                 {displayData.map((session) => (
-                  <div 
-                    key={session.id} 
+                  <div
+                    key={session.id}
                     onClick={() => navigate(`/sessions/${session.id}`)}
                     className="border border-gray-300 rounded-[2.5rem] p-8 bg-white hover:shadow-md transition-shadow cursor-pointer"
                   >
@@ -225,9 +226,9 @@ const Sessions = () => {
                       </div>
                     </div>
 
-                      <div className="bg-[#dcdcdc]/40 p-4 rounded-2xl text-gray-700 font-medium text-15px mb-8 border border-gray-200/50">
-                        <SessionCreatorName creatorId={session.creatorId} />
-                      </div>                    <div className="flex justify-between items-center">
+                    <div className="bg-[#dcdcdc]/40 p-4 rounded-2xl text-gray-700 font-medium text-15px mb-8 border border-gray-200/50">
+                      <SessionCreatorName creatorId={session.creatorId} />
+                    </div>                    <div className="flex justify-between items-center">
                       <div className="flex items-center">
                         <div className="flex -space-x-4">
                           <div className="w-12 h-12 rounded-full border border-gray-400 flex items-center justify-center bg-white relative z-[1]">
@@ -243,40 +244,53 @@ const Sessions = () => {
                         <span className="ml-6 text-gray-600 font-medium text-md">{session.participants} participants</span>
                       </div>
                       {session.isCreator && !session.isPast ? (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleTerminate(session.id); }}
-                          className="bg-red-500 text-white hover:bg-red-600 px-10 py-3 rounded-2xl transition-colors font-medium flex items-center shadow-sm"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                          Terminate
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Find raw session object and open edit modal
+                              const raw = data.getSessions.find(s => s.id === session.id);
+                              setEditSession(raw);
+                            }}
+                            className="px-6 py-3 rounded-2xl transition-colors font-medium flex items-center border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTerminate(session.id); }}
+                            className="bg-red-500 text-white hover:bg-red-600 px-10 py-3 rounded-2xl transition-colors font-medium flex items-center shadow-sm"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            Terminate
+                          </button>
+                        </div>
                       ) : (
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!session.hasJoined && !session.isCreator) handleJoin(session.id);
                           }}
                           disabled={session.isPast || session.hasJoined || session.isCreator}
-                            className={`px-10 py-3 rounded-2xl transition-colors font-medium flex items-center ${
-                              session.isPast 
-                                ? 'bg-[#2d2d2d] text-white opacity-50 cursor-not-allowed'
-                                : session.isCreator
-                                  ? 'bg-blue-100 text-blue-800 border border-blue-200 cursor-default'
-                                  : session.hasJoined 
+                          className={`px-10 py-3 rounded-2xl transition-colors font-medium flex items-center ${session.isPast
+                              ? 'bg-[#2d2d2d] text-white opacity-50 cursor-not-allowed'
+                              : session.isCreator
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200 cursor-default'
+                                : session.hasJoined
                                   ? 'bg-green-100 text-green-800 border border-green-200 cursor-default'
                                   : 'bg-[#2d2d2d] text-white hover:bg-black'
                             }`}
-                          >
-                            {!session.hasJoined && !session.isCreator && (
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            )}
-                            {session.isPast ? 'Ended' : session.isCreator ? 'Your Session' : session.hasJoined ? 'Joined' : 'Join'}
-                          </button>
-                        )}
-                      </div>
+                        >
+                          {!session.hasJoined && !session.isCreator && (
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          )}
+                          {session.isPast ? 'Ended' : session.isCreator ? 'Your Session' : session.hasJoined ? 'Joined' : 'Join'}
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+              </div>
 
             </main>
           </div>
@@ -287,19 +301,28 @@ const Sessions = () => {
       {isModalOpen && (
         <ScheduleSessionModal onClose={() => setIsModalOpen(false)} onSessionScheduled={() => refetch()} />
       )}
+      {editSession && (
+        <EditSessionModal
+          session={editSession}
+          onClose={() => setEditSession(null)}
+          onUpdated={() => { refetch(); setEditSession(null); }}
+        />
+      )}
     </div>
   );
 };
 
 export default Sessions;
 
-// Embedded Modal Component
+// ─── Schedule Modal ────────────────────────────────────────────────────────────
 const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
   const [topic, setTopic] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('1 hour');
   const [selectedType, setSelectedType] = useState('ONLINE');
+  const [location, setLocation] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   const [invitedUserIds, setInvitedUserIds] = useState([]);
 
   const { data: usersData, error: usersError } = useQuery(GET_ALL_USERS, { fetchPolicy: 'network-only' });
@@ -315,30 +338,30 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
   const allUsers = usersData?.getAllUsers?.filter(u => connectedIds.includes(u.id)) || [];
 
   const handleUserToggle = (id) => {
-    setInvitedUserIds(prev => 
+    setInvitedUserIds(prev =>
       prev.includes(id) ? prev.filter(userId => userId !== id) : [...prev, id]
     );
   };
 
   const handleSubmit = async () => {
     if (!topic || !date || !time) return alert("Fill in the fields");
-    
+
     // Convert duration like "1 hour" / "30 min" to int
     let durationInt = 60;
     if (selectedDuration.includes('30')) durationInt = 30;
     else if (selectedDuration.includes('1.5')) durationInt = 90;
     else if (selectedDuration.includes('2')) durationInt = 120;
     else if (selectedDuration.includes('3')) durationInt = 180;
-    
+
     // Try to construct iso string
     let startTime;
     try {
       const d = new Date(`${date} ${time}`);
       startTime = d.toISOString();
-    } catch(e) {
+    } catch (e) {
       startTime = new Date().toISOString();
     }
-    
+
     try {
       await createSession({
         variables: {
@@ -346,13 +369,14 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
           startTime,
           duration: durationInt,
           sessionType: selectedType,
-          location: selectedType === 'ONLINE' ? 'Online link will be provided' : 'TBD Location',
+          location: location || (selectedType === 'ONLINE' ? 'Online link will be provided' : 'TBD Location'),
+          contactInfo: contactInfo || undefined,
           invitedUserIds: invitedUserIds.length > 0 ? invitedUserIds : undefined
         }
       });
-      if(onSessionScheduled) onSessionScheduled();
+      if (onSessionScheduled) onSessionScheduled();
       onClose();
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       alert("Failed scheduling session");
     }
@@ -361,7 +385,7 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
   return (
     <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-[3rem] w-full max-w-2xl p-10 relative font-worksans shadow-2xl overflow-y-auto max-h-[90vh]">
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-8 right-8 text-gray-500 hover:text-black transition-colors"
         >
@@ -378,10 +402,10 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
           {/* Subject */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">Subject / Topic</label>
-            <input 
+            <input
               value={topic}
               onChange={e => setTopic(e.target.value)}
-              type="text" 
+              type="text"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
             />
           </div>
@@ -389,19 +413,19 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 font-medium mb-2">Date</label>
-              <input 
+              <input
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                type="date" 
+                type="date"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-2">Time</label>
-              <input 
+              <input
                 value={time}
                 onChange={e => setTime(e.target.value)}
-                type="time" 
+                type="time"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
@@ -412,7 +436,7 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
             <label className="block text-gray-700 font-medium mb-2">Duration</label>
             <div className="flex flex-wrap gap-2 text-sm">
               {['30 min', '1 hour', '1.5 hours', '2 hours', '3+ hours'].map(d => (
-                <button 
+                <button
                   key={d}
                   onClick={() => setSelectedDuration(d)}
                   className={`px-5 py-2.5 rounded-full border transition-colors ${selectedDuration === d ? 'bg-[#fcf8e3] border-[#d6a546] text-gray-800 font-medium' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}
@@ -421,6 +445,30 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Location / Link</label>
+            <input
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              type="text"
+              placeholder={selectedType === 'ONLINE' ? 'e.g. Zoom link or will be shared later' : 'e.g. Library Room 3'}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+          </div>
+
+          {/* Contact Info */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Your Contact Info <span className="text-gray-400 font-normal">(optional)</span></label>
+            <input
+              value={contactInfo}
+              onChange={e => setContactInfo(e.target.value)}
+              type="text"
+              placeholder="e.g. email, phone, Discord handle"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
           </div>
 
           {/* Location/Type */}
@@ -442,16 +490,16 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
           {/* Invite Users */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">Invite Buddies (Optional)</label>
-              <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-xl p-2 space-y-1">
-                {usersError && <p className="text-red-500 text-sm">Error Loading Users: {usersError.message}</p>}
-                {connectionsError && <p className="text-red-500 text-sm">Error Loading Connections: {connectionsError.message}</p>}
-                {allUsers.length === 0 && !usersError && !connectionsError ? (
-                  <p className="text-gray-500 p-2 text-sm">No users available. Ensure you have accepted buddies.</p>
-                ) : (
+            <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-xl p-2 space-y-1">
+              {usersError && <p className="text-red-500 text-sm">Error Loading Users: {usersError.message}</p>}
+              {connectionsError && <p className="text-red-500 text-sm">Error Loading Connections: {connectionsError.message}</p>}
+              {allUsers.length === 0 && !usersError && !connectionsError ? (
+                <p className="text-gray-500 p-2 text-sm">No users available. Ensure you have accepted buddies.</p>
+              ) : (
                 allUsers.map(u => (
                   <div key={u.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={invitedUserIds.includes(u.id)}
                       onChange={() => handleUserToggle(u.id)}
                       className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black"
@@ -463,8 +511,8 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
               )}
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={handleSubmit}
             className="w-full bg-[#1a1a1a] text-white py-4 rounded-xl font-medium text-lg hover:bg-black transition-colors mt-8"
 
@@ -477,3 +525,143 @@ const ScheduleSessionModal = ({ onClose, onSessionScheduled }) => {
   );
 };
 
+// ─── Edit Session Modal ─────────────────────────────────────────────────────────
+const EditSessionModal = ({ session, onClose, onUpdated }) => {
+  const parseDate = (ts) => {
+    const d = new Date(parseInt(ts) || ts);
+    return isNaN(d) ? '' : d.toISOString().split('T')[0];
+  };
+  const parseTime = (ts) => {
+    const d = new Date(parseInt(ts) || ts);
+    return isNaN(d) ? '' : d.toTimeString().slice(0, 5);
+  };
+  const parseDuration = (mins) => {
+    if (mins === 30) return '30 min';
+    if (mins === 90) return '1.5 hours';
+    if (mins === 120) return '2 hours';
+    if (mins >= 180) return '3+ hours';
+    return '1 hour';
+  };
+
+  const [topic, setTopic] = useState(session.topic || '');
+  const [date, setDate] = useState(parseDate(session.startTime));
+  const [time, setTime] = useState(parseTime(session.startTime));
+  const [selectedDuration, setSelDur] = useState(parseDuration(session.duration));
+  const [selectedType, setSelectedType] = useState(session.sessionType || 'ONLINE');
+  const [location, setLocation] = useState(session.location || '');
+  const [contactInfo, setContactInfo] = useState(session.creatorContactInfo || '');
+  const [saving, setSaving] = useState(false);
+
+  const [updateSession] = useMutation(UPDATE_SESSION);
+
+  const handleSave = async () => {
+    if (!topic || !date || !time) return alert('Fill in required fields');
+    let durationInt = 60;
+    if (selectedDuration.includes('30')) durationInt = 30;
+    if (selectedDuration.includes('1.5')) durationInt = 90;
+    if (selectedDuration.includes('2')) durationInt = 120;
+    if (selectedDuration.includes('3')) durationInt = 180;
+
+    let startTime;
+    try { startTime = new Date(`${date} ${time}`).toISOString(); } catch { startTime = session.startTime; }
+
+    setSaving(true);
+    try {
+      await updateSession({
+        variables: {
+          sessionId: session.id,
+          topic,
+          startTime,
+          duration: durationInt,
+          sessionType: selectedType,
+          location: location || undefined,
+          contactInfo: contactInfo || undefined,
+        }
+      });
+      onUpdated();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update session');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-[3rem] w-full max-w-2xl p-10 relative font-worksans shadow-2xl overflow-y-auto max-h-[90vh]">
+        <button onClick={onClose} className="absolute top-8 right-8 text-gray-500 hover:text-black transition-colors">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+        <h2 className="text-5xl md:text-[52px] font-playfair font-extrabold italic text-center text-zinc-900 mb-10 tracking-tight mt-4">
+          Edit Session
+        </h2>
+
+        <div className="space-y-6">
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Subject / Topic</label>
+            <input value={topic} onChange={e => setTopic(e.target.value)} type="text"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">Date</label>
+              <input value={date} onChange={e => setDate(e.target.value)} type="date"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400" />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">Time</label>
+              <input value={time} onChange={e => setTime(e.target.value)} type="time"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Duration</label>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {['30 min', '1 hour', '1.5 hours', '2 hours', '3+ hours'].map(d => (
+                <button key={d} onClick={() => setSelDur(d)}
+                  className={`px-5 py-2.5 rounded-full border transition-colors ${selectedDuration === d ? 'bg-[#fcf8e3] border-[#d6a546] text-gray-800 font-medium' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Location / Link</label>
+            <input value={location} onChange={e => setLocation(e.target.value)} type="text"
+              placeholder="e.g. Zoom link or room number"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400" />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Your Contact Info <span className="text-gray-400 font-normal">(optional)</span></label>
+            <input value={contactInfo} onChange={e => setContactInfo(e.target.value)} type="text"
+              placeholder="e.g. email, phone, Discord handle"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400" />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Format</label>
+            <div className="flex space-x-3">
+              {['ONLINE', 'IN_PERSON'].map(type => (
+                <button key={type} onClick={() => setSelectedType(type)}
+                  className={`px-6 py-2.5 rounded-full text-sm font-medium border transition-colors flex-1 ${selectedType === type ? 'bg-black text-white border-black' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
+                  {type.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={handleSave} disabled={saving}
+            className="w-full bg-[#1a1a1a] text-white py-4 rounded-xl font-medium text-lg hover:bg-black transition-colors mt-8 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
