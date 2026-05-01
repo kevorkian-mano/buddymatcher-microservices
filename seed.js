@@ -13,7 +13,7 @@ const hash = (pwd) => pwd === "pass" ? "$2a$10$UwewS3G1TVx3soRfwhrXpu7It53vBHGwj
 
 // Create 5 users with very similar profiles (Group A)
 const groupA_Users = [
-  { id: crypto.randomUUID(), name: "Alice Adams 2", email: "alice@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
+  { id: crypto.randomUUID(), name: "Alice Adams 1", email: "alice@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
   { id: crypto.randomUUID(), name: "Bob Barker 2", email: "bob@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
   { id: crypto.randomUUID(), name: "Charlie Chaplin 2", email: "charlie@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Computer Science", academicYear: "Junior" },
   { id: crypto.randomUUID(), name: "Diana Prince 2", email: "diana@stanford2.edu", passwordHash: hash("pass"), university: "Stanford University2", major: "Software Engineering", academicYear: "Junior" },
@@ -140,10 +140,9 @@ const random_Profiles = random_Users.map((u, i) => {
 const ALL_USERS = [
   groupA_Users[0],
    groupA_Users[1],
-  groupB_Users[0],
+   groupA_Users[2],
+   groupA_Users[3],
 
-  random_Users[0],
-  random_Users[1]
 ];
 
 const ALL_PROFILES = [
