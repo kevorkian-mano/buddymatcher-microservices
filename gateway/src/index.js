@@ -1,5 +1,7 @@
+const express = require('express');
+const cors = require('cors');
 const { ApolloServer } = require('@apollo/server');
-const { startStandaloneServer } = require('@apollo/server/standalone');
+const { expressMiddleware } = require('@apollo/server/express4');
 const {
   ApolloGateway,
   IntrospectAndCompose,
@@ -11,10 +13,7 @@ require('dotenv').config();
 class AuthenticatedDataSource extends RemoteGraphQLDataSource {
   willSendRequest({ request, context }) {
     if (context.token) {
-      request.http.headers.set(
-        "authorization",
-        context.token
-      );
+      request.http.headers.set('authorization', context.token);
     }
   }
 }
@@ -30,28 +29,38 @@ const gateway = new ApolloGateway({
       { name: 'notification', url: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006' },
       { name: 'messaging', url: process.env.MESSAGING_SERVICE_URL || 'http://localhost:4007' },
     ],
+    pollIntervalInMs: 10000,
   }),
-
   buildService({ name, url }) {
     return new AuthenticatedDataSource({ url });
   },
 });
 
-const server = new ApolloServer({
-  gateway,
-});
+const server = new ApolloServer({ gateway });
 
 async function startGateway() {
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: parseInt(process.env.PORT) || 4000 },
+  await server.start();
 
+  const app = express();
+
+  app.use(cors({
+    origin: '*', // allow all origins
+    credentials: true,
+  }));
+
+  app.use(express.json());
+
+  app.use('/graphql', expressMiddleware(server, {
     context: async ({ req }) => {
-      const token = req.headers.authorization || "";
+      const token = req.headers.authorization || '';
       return { token };
     },
-  });
+  }));
 
-  console.log(`🚀 Gateway ready at ${url}`);
+  const port = parseInt(process.env.PORT) || 4000;
+  app.listen(port, () => {
+    console.log(`🚀 Gateway ready at http://localhost:${port}/graphql`);
+  });
 }
 
 startGateway();
