@@ -202,7 +202,7 @@ const BuddyDetails = () => {
                     )}
                   </div>
 
-                  <div className="bg-white p-6 border-2 border-black rounded-3xl shadow-[4px_4px_0px_#000] mb-8">
+                  <div className="bg-white p-6 border-2 border-black rounded-3xl shadow-[4px_4px_0px_#000] mb-6">
                     <h3 className="text-2xl font-playfair font-bold text-zinc-900 mb-6">Availability</h3>
                     {profile.availability.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3">
@@ -218,8 +218,40 @@ const BuddyDetails = () => {
                     )}
                   </div>
 
-                </div>
-              </div>
+                  {(profile.courses.length > 0 || profile.topics.length > 0) && (
+                    <div className="bg-white p-6 border-2 border-black rounded-3xl shadow-[4px_4px_0px_#000] mb-8">
+                      <h3 className="text-2xl font-playfair font-bold text-zinc-900 mb-6">Courses &amp; Topics</h3>
+
+                      {profile.courses.length > 0 && (
+                        <div className="mb-6">
+                          <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3 block">Courses</span>
+                          <div className="grid grid-cols-1 gap-3">
+                            {profile.courses.map((c, i) => (
+                              <div key={i} className="flex items-center text-lg font-worksans font-medium text-zinc-900 bg-stone-100 px-4 py-3 rounded-xl border border-stone-200">
+                                <span>{c}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {profile.topics.length > 0 && (
+                        <div>
+                          <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3 block">Topics</span>
+                          <div className="grid grid-cols-1 gap-3">
+                            {profile.topics.map((t, i) => (
+                              <div key={i} className="flex items-center text-lg font-worksans font-medium text-zinc-900 bg-stone-100 px-4 py-3 rounded-xl border border-stone-200">
+                                <span>{t}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+              </div>  {/* end flex flex-col gap-6 */}
+              </div>  {/* end w-full mt-10 */}
             </main>
           </div>
         </div>

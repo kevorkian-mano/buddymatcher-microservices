@@ -4,6 +4,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import { Header, Breadcrumb, Sidebar } from '../components/dashboard';
 import { GET_DASHBOARD_DATA } from '../graphql/queries/dashboardQueries';
 import { GET_POTENTIAL_MATCHES, GET_BUDDY_REQUESTS, GET_CONNECTIONS } from '../graphql/queries/matchingQueries';
+import { GET_MY_NOTIFICATIONS } from '../graphql/queries/notificationQueries';
 import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
 import { GET_FULL_USER_BY_ID } from '../graphql/queries/userQueries';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -135,8 +136,21 @@ const RequestCard = ({ req, onAccept, onDecline }) => {
 
 const RequestsView = () => {
   const { data, loading, refetch } = useQuery(GET_BUDDY_REQUESTS, { fetchPolicy: 'network-only' });
-  const [acceptRequest] = useMutation(ACCEPT_BUDDY_REQUEST, { onCompleted: () => refetch() });
-  const [rejectRequest] = useMutation(REJECT_BUDDY_REQUEST, { onCompleted: () => refetch() });
+  const [acceptRequest] = useMutation(ACCEPT_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_BUDDY_REQUESTS },
+      { query: GET_MY_NOTIFICATIONS },
+      { query: GET_CONNECTIONS }
+    ],
+    onCompleted: () => refetch()
+  });
+  const [rejectRequest] = useMutation(REJECT_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_BUDDY_REQUESTS },
+      { query: GET_MY_NOTIFICATIONS }
+    ],
+    onCompleted: () => refetch()
+  });
 
   const pendingRequests = (data?.getBuddyRequests || []).filter(r => r.status === "PENDING");
 

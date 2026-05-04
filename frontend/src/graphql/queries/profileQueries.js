@@ -47,6 +47,15 @@ export const GET_PROFILE_BY_USER_ID = gql`
     }
     getProfileByUserId(userId: $userId) {
       id
+      courses {
+        id
+        name
+        code
+      }
+      topics {
+        id
+        name
+      }
       preferences {
         studyPace
         studyStyle

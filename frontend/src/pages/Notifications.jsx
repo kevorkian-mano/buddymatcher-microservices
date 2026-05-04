@@ -6,6 +6,7 @@ import { GET_MY_NOTIFICATIONS } from '../graphql/queries/notificationQueries';
 import { MARK_NOTIFICATION_READ } from '../graphql/mutations/notificationMutations';
 import { JOIN_SESSION } from '../graphql/mutations/sessionMutations';
 import { SEND_BUDDY_REQUEST, ACCEPT_BUDDY_REQUEST, REJECT_BUDDY_REQUEST } from '../graphql/mutations/matchingMutations';
+import { GET_BUDDY_REQUESTS, GET_CONNECTIONS } from '../graphql/queries/matchingQueries';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const TYPE_LABEL = {
@@ -32,7 +33,10 @@ const timeAgo = (ts) => {
   return `${d}d ago`;
 };
 
-const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
+// allNotifications = full list, used to detect linked notifications across types
+// userActionMap    = { [userId]: 'connected' | 'accepted' | 'declined' } — shared page-level state
+// onUserAction     = (userId, action) => void — updates the map
+const NotificationRow = ({ n, onMarkRead, onAction, navigate, allNotifications, userActionMap, onUserAction }) => {
   const [busy, setBusy] = useState(null);
   const meta  = parseMeta(n);
   const label = TYPE_LABEL[n.type] || n.type;
@@ -52,12 +56,49 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
     return null;
   })();
 
+  // ─── Cross-notification sync helpers ─────────────────────────────────────
+  // For MATCH_FOUND: check if there's already a pending BUDDY_REQUEST from the same matchedUserId.
+  // If yes, "+ Connect" should ACCEPT that request instead of sending a new one.
+  const linkedBuddyRequest = n.type === 'MATCH_FOUND'
+    ? allNotifications.find(notif =>
+        notif.type === 'BUDDY_REQUEST' &&
+        parseMeta(notif).fromUserId === meta.matchedUserId
+      )
+    : null;
+  const linkedRequestMeta = linkedBuddyRequest ? parseMeta(linkedBuddyRequest) : null;
+
+  // Shared action state keyed by the peer userId so both notification types see the same status
+  const peerUserId = n.type === 'MATCH_FOUND' ? meta.matchedUserId : meta.fromUserId;
+  const peerAction = userActionMap[peerUserId]; // 'connected' | 'accepted' | 'declined' | undefined
+
   const run = async (type, vars, next) => {
     setBusy(type);
-    try { await onAction(type, vars); } catch {}
+    try {
+      await onAction(type, vars);
+      // Propagate the action to the shared map so linked notifications update instantly
+      if (type === 'acceptBuddy') onUserAction(peerUserId, 'accepted');
+      if (type === 'rejectBuddy') onUserAction(peerUserId, 'declined');
+      if (type === 'sendBuddy')   onUserAction(peerUserId, 'connected');
+    } catch {}
     setBusy(next);
     onMarkRead(n.id);
   };
+
+  // ─── MATCH_FOUND connect handler ─────────────────────────────────────────
+  // If the matchedUser already sent us a BUDDY_REQUEST → accept it.
+  // Otherwise → send a new buddy request.
+  const handleMatchConnect = () => {
+    if (linkedRequestMeta?.requestId) {
+      // They already sent us a request — accept it directly
+      run('acceptBuddy', { requestId: linkedRequestMeta.requestId }, 'accepted');
+    } else {
+      run('sendBuddy', { toUser: meta.matchedUserId }, 'connected');
+    }
+  };
+
+  // Determine whether the connect / accept buttons should still show
+  const matchActioned    = peerAction === 'connected' || peerAction === 'accepted' || busy === 'connected' || busy === 'accepted';
+  const requestActioned  = peerAction === 'accepted'  || peerAction === 'declined'  || !!busy;
 
   return (
     <div className={`flex items-start justify-between gap-6 py-5 border-b border-gray-200 ${!n.read ? 'bg-white' : ''}`}>
@@ -77,25 +118,34 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
       {/* Right: action buttons */}
       <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
 
+        {/* ── MATCH_FOUND ─────────────────────────────────────────────── */}
         {n.type === 'MATCH_FOUND' && (
           <>
             <button onClick={() => navigate(`/buddies/${meta.matchedUserId}`)}
               className="px-5 py-2 rounded-full text-sm font-medium border border-gray-300 text-zinc-700 hover:bg-gray-50 transition-colors font-worksans">
               View Profile
             </button>
-            {!n.read && busy !== 'connected' && (
+
+            {/* Show connect button only if not yet actioned */}
+            {!n.read && !matchActioned && (
               <button
-                disabled={busy === 'sendBuddy'}
-                onClick={() => run('sendBuddy', { toUser: meta.matchedUserId }, 'connected')}
+                disabled={busy === 'sendBuddy' || busy === 'acceptBuddy'}
+                onClick={handleMatchConnect}
                 className={`px-5 py-2 rounded-full text-sm font-medium font-worksans transition-colors
-                  ${busy === 'sendBuddy' ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#1a1a1a] text-white hover:bg-black'}`}>
-                {busy === 'sendBuddy' ? 'Connecting…' : '+ Connect'}
+                  ${(busy === 'sendBuddy' || busy === 'acceptBuddy') ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#1a1a1a] text-white hover:bg-black'}`}>
+                {linkedRequestMeta?.requestId ? 'Accept Request' : '+ Connect'}
               </button>
             )}
-            {busy === 'connected' && <span className="text-sm text-gray-400 font-worksans">Requested</span>}
+
+            {matchActioned && (
+              <span className="text-sm text-gray-400 font-worksans">
+                {peerAction === 'accepted' || busy === 'accepted' ? 'Connected' : 'Requested'}
+              </span>
+            )}
           </>
         )}
 
+        {/* ── SESSION notifications ────────────────────────────────────── */}
         {n.type === 'SESSION_UPDATED' && meta.sessionId && (
           <button onClick={() => navigate(`/sessions/${meta.sessionId}`)}
             className="px-5 py-2 rounded-full text-sm font-medium bg-[#1a1a1a] text-white hover:bg-black font-worksans transition-colors">
@@ -117,7 +167,9 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
           </button>
         )}
 
-        {n.type === 'BUDDY_REQUEST' && !n.read && !busy && meta.requestId && (
+        {/* ── BUDDY_REQUEST ────────────────────────────────────────────── */}
+        {/* Show Accept/Decline only if not yet acted on (locally or cross-notification) */}
+        {n.type === 'BUDDY_REQUEST' && !n.read && !requestActioned && meta.requestId && (
           <>
             <button onClick={() => run('acceptBuddy', { requestId: meta.requestId }, 'accepted')}
               className="px-5 py-2 rounded-full text-sm font-medium bg-[#1a1a1a] text-white hover:bg-black font-worksans transition-colors">
@@ -129,10 +181,14 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
             </button>
           </>
         )}
-        {n.type === 'BUDDY_REQUEST' && busy && (
-          <span className="text-sm text-gray-400 font-worksans capitalize">{busy}</span>
+        {/* Show outcome label: from local busy OR from cross-notification userActionMap */}
+        {n.type === 'BUDDY_REQUEST' && requestActioned && (
+          <span className="text-sm text-gray-400 font-worksans capitalize">
+            {peerAction === 'accepted' || busy === 'accepted' ? 'Connected' : 'Declined'}
+          </span>
         )}
 
+        {/* ── SESSION_INVITATION ──────────────────────────────────────── */}
         {n.type === 'SESSION_INVITATION' && !n.read && !busy && meta.sessionId && (
           <>
             <button onClick={() => run('joinSession', { sessionId: meta.sessionId }, 'joined')}
@@ -149,7 +205,8 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
           <span className="text-sm text-gray-400 font-worksans capitalize">{busy}</span>
         )}
 
-        {!n.read && !busy && (
+        {/* ── Universal Mark Read ──────────────────────────────────────── */}
+        {!n.read && !busy && !peerAction && (
           <button onClick={() => onMarkRead(n.id)}
             className="px-5 py-2 rounded-full text-sm font-medium border border-gray-300 text-zinc-700 hover:bg-gray-50 font-worksans transition-colors">
             Mark Read
@@ -163,8 +220,15 @@ const NotificationRow = ({ n, onMarkRead, onAction, navigate }) => {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const Notifications = () => {
   const navigate = useNavigate();
-  const [user, setUser]     = useState({ name: 'Alex' });
-  const [filter, setFilter] = useState('all');
+  const [user, setUser]         = useState({ name: 'Alex' });
+  const [filter, setFilter]     = useState('all');
+  // Cross-notification sync: { [userId]: 'connected' | 'accepted' | 'declined' }
+  const [userActionMap, setUserActionMap] = useState({});
+
+  const handleUserAction = (userId, action) => {
+    if (!userId) return;
+    setUserActionMap(prev => ({ ...prev, [userId]: action }));
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('user');
@@ -175,8 +239,21 @@ const Notifications = () => {
   const [markRead]    = useMutation(MARK_NOTIFICATION_READ, { onCompleted: () => refetch() });
   const [joinSession] = useMutation(JOIN_SESSION);
   const [sendBuddy]   = useMutation(SEND_BUDDY_REQUEST);
-  const [acceptBuddy] = useMutation(ACCEPT_BUDDY_REQUEST);
-  const [rejectBuddy] = useMutation(REJECT_BUDDY_REQUEST);
+  const [acceptBuddy] = useMutation(ACCEPT_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_MY_NOTIFICATIONS },
+      { query: GET_BUDDY_REQUESTS },
+      { query: GET_CONNECTIONS }
+    ],
+    onCompleted: () => refetch()
+  });
+  const [rejectBuddy] = useMutation(REJECT_BUDDY_REQUEST, {
+    refetchQueries: [
+      { query: GET_MY_NOTIFICATIONS },
+      { query: GET_BUDDY_REQUESTS }
+    ],
+    onCompleted: () => refetch()
+  });
 
   if (loading) return <LoadingSpinner />;
 
@@ -249,6 +326,9 @@ const Notifications = () => {
                     onMarkRead={(id) => markRead({ variables: { id } })}
                     onAction={handleAction}
                     navigate={navigate}
+                    allNotifications={all}
+                    userActionMap={userActionMap}
+                    onUserAction={handleUserAction}
                   />
                 ))}
               </div>
