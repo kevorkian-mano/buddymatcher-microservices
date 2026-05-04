@@ -4,7 +4,8 @@
   "description": "Handles user registration, login, JWT auth, and basic profile info",
   "main": "src/index.js",
   "scripts": {
-    "start": "npx prisma db push && node src/index.js",
+    "start": "node src/index.js",
+    "migrate": "npx prisma db push",
     "dev": "nodemon src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
