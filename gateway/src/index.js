@@ -50,6 +50,10 @@ async function startGateway() {
 
   app.use(express.json());
 
+  // ADD THIS LINE
+  app.get('/', (req, res) => res.send('Gateway is running ✅'));
+
+
   app.use('/graphql', expressMiddleware(server, {
     context: async ({ req }) => {
       const token = req.headers.authorization || '';
