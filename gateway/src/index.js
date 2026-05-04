@@ -36,30 +36,25 @@ const gateway = new ApolloGateway({
   },
 });
 
-const server = new ApolloServer({ gateway });
-
 async function startGateway() {
+  const server = new ApolloServer({ gateway });
   await server.start();
 
   const app = express();
 
-  app.use(cors({
-    origin: '*', // allow all origins
-    credentials: true,
-  }));
-
-  app.use(express.json());
-
-  // ADD THIS LINE
   app.get('/', (req, res) => res.send('Gateway is running ✅'));
 
-
-app.use('/graphql', express.json(), expressMiddleware(server, {
-  context: async ({ req }) => {
-    const token = req.headers.authorization || '';
-    return { token };
-  },
-}));
+  app.use(
+    '/graphql',
+    cors({ origin: '*', credentials: true }),
+    express.json(),
+    expressMiddleware(server, {
+      context: async ({ req }) => {
+        const token = req.headers.authorization || '';
+        return { token };
+      },
+    })
+  );
 
   const port = parseInt(process.env.PORT) || 4000;
   app.listen(port, () => {
