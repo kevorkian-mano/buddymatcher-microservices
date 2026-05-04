@@ -15,4 +15,4 @@ COPY wait-for-services.sh .
 RUN dos2unix wait-for-services.sh && chmod +x wait-for-services.sh
 
 EXPOSE 4000
-CMD ["./wait-for-services.sh", "npm", "start"]
+CMD ["npm", "start"]
