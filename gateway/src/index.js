@@ -54,12 +54,12 @@ async function startGateway() {
   app.get('/', (req, res) => res.send('Gateway is running ✅'));
 
 
-  app.use('/graphql', expressMiddleware(server, {
-    context: async ({ req }) => {
-      const token = req.headers.authorization || '';
-      return { token };
-    },
-  }));
+app.use('/graphql', express.json(), expressMiddleware(server, {
+  context: async ({ req }) => {
+    const token = req.headers.authorization || '';
+    return { token };
+  },
+}));
 
   const port = parseInt(process.env.PORT) || 4000;
   app.listen(port, () => {
