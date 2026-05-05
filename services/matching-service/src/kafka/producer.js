@@ -1,7 +1,21 @@
 const { Kafka } = require('kafkajs');
 const { v4: uuidv4 } = require('uuid');
 
-const kafka = new Kafka({ clientId: 'matching-service', brokers: [process.env.KAFKA_BROKER || 'localhost:9092'] });
+const kafka = new Kafka({
+  clientId: 'matching-service-consumer',
+  brokers: [process.env.KAFKA_BROKER],
+  ssl: true,
+  sasl: {
+    mechanism: 'plain',
+    username: process.env.KAFKA_API_KEY,
+    password: process.env.KAFKA_API_SECRET,
+  },
+});
+
+console.log('KAFKA_BROKER:', process.env.KAFKA_BROKER);
+console.log('KAFKA_API_KEY:', process.env.KAFKA_API_KEY ? 'SET' : 'NOT SET');
+console.log('KAFKA_API_SECRET:', process.env.KAFKA_API_SECRET ? 'SET' : 'NOT SET');
+
 const producer = kafka.producer();
 
 let connected = false;
