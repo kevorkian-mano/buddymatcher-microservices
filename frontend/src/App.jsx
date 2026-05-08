@@ -5,6 +5,8 @@ import SignIn from './pages/SignIn';
 import AcademicProfile from './pages/AcademicProfile';
 import StudyPreferences from './pages/StudyPreferences';
 import BuddyMatcherLanding from './pages/BuddyMatcherLanding';
+import FeaturesLanding from './pages/FeaturesLanding';
+import HowItWorksLanding from './pages/HowItWorksLanding';
 import Dashboard from './pages/Dashboard';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
@@ -39,6 +41,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<BuddyMatcherLanding />} />
+        <Route path="/features" element={<FeaturesLanding />} />
+        <Route path="/how-it-works" element={<HowItWorksLanding />} />
         
         {/* Public Auth Routes */}
         <Route path="/signup" element={<AuthRoute><SignUp /></AuthRoute>} />

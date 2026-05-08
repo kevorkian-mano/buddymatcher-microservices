@@ -1,9 +1,19 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export function HeroSection() {
+  const { scrollYProgress } = useScroll();
+  const yImage = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yTags = useTransform(scrollYProgress, [0, 1], [0, 150]);
+
   return (
-    <section className="overflow-hidden relative px-7 md:px-14 py-10 md:py-14 mx-6 md:mx-10 mt-4 bg-[#efd476] rounded-[28px] border border-[#e4ca6f]">
+    <motion.section 
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      className="overflow-hidden relative px-7 md:px-14 py-10 md:py-14 mx-6 md:mx-10 mt-4 bg-[#efd476] rounded-[28px] border border-[#e4ca6f]"
+    >
       <div className="flex gap-10 md:gap-14 justify-between items-center max-md:flex-col max-md:items-start">
         <div className="flex-1 max-md:w-full md:pt-2 md:max-w-[52%]">
           <h2 className="mb-1 text-[46px] md:text-[72px] font-playfair font-black italic text-zinc-900 leading-[0.95] tracking-[-0.02em]">
@@ -30,7 +40,7 @@ export function HeroSection() {
         </div>
         
         <div className="relative flex-1 flex justify-center md:justify-end max-md:w-full">
-          <div className="relative h-[470px] w-[355px] md:h-[525px] md:w-[395px] max-sm:h-[420px] max-sm:w-[300px]">
+          <motion.div style={{ y: yImage }} className="relative h-[470px] w-[355px] md:h-[525px] md:w-[395px] max-sm:h-[420px] max-sm:w-[300px]">
             <div className="absolute top-[18px] left-[-16px] right-0 bottom-[-16px] border border-zinc-700 rounded-[32px]" />
             <img
               src="https://api.builder.io/api/v1/image/assets/TEMP/d03b3af1ed25db54a69840eaff0d275e559bbbb3?width=876"
@@ -38,45 +48,43 @@ export function HeroSection() {
               className="absolute inset-0 w-full h-full rounded-[32px] object-cover border border-zinc-800 z-10"
             />
 
-            {/* Top-left sparkle */}
-            <img
-              src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-              alt="Decorative illustration"
-              className="object-contain absolute z-20 shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg]"
-            />
+            <motion.div style={{ y: yTags }} className="absolute inset-0 z-20 pointer-events-none">
+              {/* Top-left sparkle */}
+              <img
+                src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+                alt="Decorative illustration"
+                className="object-contain absolute shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg] pointer-events-auto"
+              />
 
-            {/* Top-right sparkle */}
-            <img
-              src="https://api.builder.io/api/v1/image/assets/TEMP/f67e14264a980a3c5b9ee5af02f650f5baa3ac3a?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-              alt="Decorative illustration"
-              className="object-contain absolute z-20 shrink-0 aspect-[0.87] -top-6 -right-2 md:-right-6 h-[80px] w-[70px] rotate-[15deg]"
-            />
+              {/* Top-right sparkle */}
+              <img
+                src="https://api.builder.io/api/v1/image/assets/TEMP/f67e14264a980a3c5b9ee5af02f650f5baa3ac3a?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+                alt="Decorative illustration"
+                className="object-contain absolute shrink-0 aspect-[0.87] -top-6 -right-2 md:-right-6 h-[80px] w-[70px] rotate-[15deg] pointer-events-auto"
+              />
 
-            <div className="absolute -right-8 md:-right-10 top-[66px] px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 text-zinc-900 z-20"
-            >
-              Fresh insights.
-            </div>
-            
-            <div className="absolute -right-7 md:-right-9 px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 bottom-[120px] md:bottom-[112px] text-zinc-900 z-20"
-            >
-              Collective growth.
-            </div>
-            
-            <div className="absolute bottom-7 left-[-24px] md:left-[-46px] px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 text-zinc-900 z-20"
-            >
-              Real conversations.
+              <div className="absolute -right-8 md:-right-10 top-[66px] px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 text-zinc-900 pointer-events-auto">
+                Fresh insights.
+              </div>
+              
+              <div className="absolute -right-7 md:-right-9 px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 bottom-[120px] md:bottom-[112px] text-zinc-900 pointer-events-auto">
+                Collective growth.
+              </div>
+              
+              <div className="absolute bottom-7 left-[-24px] md:left-[-46px] px-5 py-2.5 text-[14px] font-worksans font-medium bg-white rounded-full border border-zinc-300 text-zinc-900 pointer-events-auto">
+                Real conversations.
+              </div>
 
-            </div>
-
-            {/* sparkle */}
-            <img
-              src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-              alt="Decorative illustration"
-              className="object-contain absolute z-20 shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg]"
-            />
-          </div>
+              {/* sparkle */}
+              <img
+                src="https://api.builder.io/api/v1/image/assets/TEMP/eed0076b8a912edb1603878394d8e074e30f7e64?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+                alt="Decorative illustration"
+                className="object-contain absolute shrink-0 aspect-[0.66] -top-8 left-4 md:-left-4 h-[104px] w-[69px] rotate-[-15deg] pointer-events-auto"
+              />
+            </motion.div>
+          </motion.div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
