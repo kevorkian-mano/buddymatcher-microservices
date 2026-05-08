@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
+import { Bell } from 'lucide-react';
 import { GET_MY_NOTIFICATIONS } from '../../graphql/queries/notificationQueries';
 
 export const Sidebar = ({ currentView, setCurrentView }) => {
@@ -41,7 +42,7 @@ export const Sidebar = ({ currentView, setCurrentView }) => {
       path: "/sessions"
     },
     {
-      icon: "https://api.builder.io/api/v1/image/assets/TEMP/75e5b7945a04d208fafe6eca3752e1c1723f7ba7?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865",
+      icon: "bell",
       label: "Notifications",
       path: "/notifications"
     },
@@ -95,11 +96,15 @@ export const Sidebar = ({ currentView, setCurrentView }) => {
                     isActive ? 'bg-amber-100 font-bold' : 'hover:bg-amber-100/50'
                   }`}
                 >
-                  <img
-                    src={item.icon}
-                    className="object-contain shrink-0 aspect-square w-[23px]"
-                    alt={`${item.label} icon`}
-                  />
+                  {item.icon === 'bell' ? (
+                    <Bell className="shrink-0 w-[23px] h-[23px] text-zinc-800" strokeWidth={2.5} />
+                  ) : (
+                    <img
+                      src={item.icon}
+                      className="object-contain shrink-0 aspect-square w-[23px]"
+                      alt={`${item.label} icon`}
+                    />
+                  )}
                   <span className="text-zinc-800 flex-1">{item.label}</span>
                   {item.label === 'Notifications' && unreadCount > 0 && (
                     <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">{unreadCount}</span>

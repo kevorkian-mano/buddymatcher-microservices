@@ -3,17 +3,32 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, User } from 'lucide-react';
 import { useQuery } from '@apollo/client';
 import { GET_MY_NOTIFICATIONS } from '../../graphql/queries/notificationQueries';
+import { GET_ALL_USERS } from '../../graphql/queries/userQueries';
+import { GET_SESSIONS } from '../../graphql/queries/sessionQueries';
 
-export const Header = ({ userName }) => {
+export const Header = ({ userName, searchQuery: externalSearchQuery, onSearchChange }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [localSearch, setLocalSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const dropdownRef = useRef(null);
+  const searchContainerRef = useRef(null);
   const navigate = useNavigate();
+
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   const { data: notifData } = useQuery(GET_MY_NOTIFICATIONS, {
     pollInterval: 10000,
     fetchPolicy: 'network-only'
   });
   const unreadCount = notifData?.getMyNotifications?.filter(n => !n.read)?.length || 0;
+
+  const { data: usersData } = useQuery(GET_ALL_USERS, {
+    fetchPolicy: 'cache-first'
+  });
+
+  const { data: sessionsData } = useQuery(GET_SESSIONS, {
+    fetchPolicy: 'cache-first'
+  });
 
   const handleSignOut = () => {
     localStorage.removeItem('token');
@@ -26,17 +41,47 @@ export const Header = ({ userName }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setSearchFocused(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setLocalSearch(val);
+    if (onSearchChange) {
+      onSearchChange(val);
+    }
+  };
+
+  // Search Logic
+  const displaySearch = externalSearchQuery !== undefined ? externalSearchQuery : localSearch;
+  const isSearching = searchFocused && displaySearch.trim().length > 0;
+  const lowerQuery = displaySearch.toLowerCase();
+
+  const allBuddies = usersData?.getAllUsers || [];
+  const allSessions = sessionsData?.getSessions || [];
+
+  const searchBuddies = isSearching ? allBuddies.filter(u => 
+    u.id !== currentUser.id && u.name && u.name.toLowerCase().includes(lowerQuery)
+  ) : [];
+
+  const searchSessions = isSearching ? allSessions.filter(s => {
+    // Only available to join ones (not created by me, and not already joined)
+    if (s.creatorId === currentUser.id) return false;
+    if (s.participants?.some(p => p.userId === currentUser.id)) return false;
+    return s.topic && s.topic.toLowerCase().includes(lowerQuery);
+  }) : [];
 
   return (
     <header className="flex flex-wrap gap-4 md:gap-8 items-center justify-between w-full max-md:max-w-full">
       <h1 className="text-3xl md:text-4xl font-playfair font-extrabold italic lowercase text-zinc-900 tracking-tight shrink-0">
         buddymatcher
       </h1>
-      <div className="grow shrink min-w-0 md:min-w-[300px] lg:min-w-[600px] text-xl rounded-none text-zinc-800 max-w-[703px] max-md:max-w-full">
+      <div className="grow shrink min-w-0 md:min-w-[300px] lg:min-w-[600px] text-xl rounded-none text-zinc-800 max-w-[703px] max-md:max-w-full relative" ref={searchContainerRef}>
         <div className="flex items-center gap-4 px-5 py-3.5 rounded-xl border border-solid border-stone-300 max-md:px-5 bg-white focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-colors">
           <img
             src="https://api.builder.io/api/v1/image/assets/TEMP/18811d22910e79fa42b004c7a421677ba5e619bc?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
@@ -45,10 +90,73 @@ export const Header = ({ userName }) => {
           />
           <input
             type="text"
+            value={displaySearch}
+            onChange={handleSearchChange}
+            onFocus={() => setSearchFocused(true)}
             placeholder="Search Buddies, Subject, Sessions....."
             className="flex-auto w-full bg-transparent outline-none font-worksans text-lg placeholder-zinc-400"
           />
         </div>
+        
+        {/* Search Results Dropdown */}
+        {isSearching && (searchBuddies.length > 0 || searchSessions.length > 0) && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl max-h-96 overflow-y-auto z-50">
+            {searchBuddies.length > 0 && (
+              <div className="p-4">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Buddies</h3>
+                <div className="flex flex-col gap-2">
+                  {searchBuddies.map(user => (
+                    <div 
+                      key={user.id} 
+                      className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/buddies/${user.id}`);
+                      }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold text-sm">
+                        {user.name[0]?.toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{user.name}</span>
+                        <span className="text-xs text-gray-500">{user.major || 'Unknown Major'} - {user.university || 'Unknown Uni'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {searchBuddies.length > 0 && searchSessions.length > 0 && <div className="h-px bg-gray-100 mx-4" />}
+            
+            {searchSessions.length > 0 && (
+              <div className="p-4">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Available Sessions</h3>
+                <div className="flex flex-col gap-2">
+                  {searchSessions.map(session => (
+                    <div 
+                      key={session.id} 
+                      className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg border border-gray-100 cursor-pointer"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/sessions/${session.id}`);
+                      }}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-gray-900">{session.topic}</span>
+                        <span className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          {session.sessionType || 'Unknown Type'} • {session.duration}m
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">Join</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-row gap-4 md:gap-6 items-center shrink-0">

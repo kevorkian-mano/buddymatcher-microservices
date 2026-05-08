@@ -10,6 +10,8 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 
 function Dashboard() {
   const [user, setUser] = React.useState({ id: "", name: "Alex" });
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchFilter, setSearchFilter] = React.useState('all'); // all, buddies, sessions
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -124,13 +126,44 @@ function Dashboard() {
     };
   }) : [];
 
+  // Search logic
+  const isSearching = searchQuery.trim().length > 0;
+  const lowerQuery = searchQuery.toLowerCase();
+
+  const allFilteredBuddies = isSearching ? (usersData?.getAllUsers || []).filter(u => 
+    u.id !== user.id && u.name.toLowerCase().includes(lowerQuery)
+  ).map(u => ({
+    userId: u.id,
+    name: u.name || `User ${u.id.substring(0, 4)}`,
+    field: u.major || "General Studies",
+    school: u.university || "University",
+    year: "N/A",
+    matchPercentage: `N/A`,
+    tags: ["User"],
+    subjects: u.interests || [],
+    avatar: `https://ui-avatars.com/api/?name=${(u.name || "U")[0]}&background=random&color=fff`,
+    isRequested: false
+  })) : [];
+
+  const allFilteredSessions = isSearching ? sessions.filter(s => 
+    s.topic.toLowerCase().includes(lowerQuery) || (s.location && s.location.toLowerCase().includes(lowerQuery))
+  ).map(s => ({
+    id: s.id,
+    title: s.topic,
+    date: formatDate(s.startTime),
+    time: `${formatTime(s.startTime)} · ${s.duration} mins`,
+    location: s.location || "TBD",
+    isOnline: s.sessionType === 'VIRTUAL' || s.sessionType === 'ONLINE'
+  })) : [];
+
+
   return (
     <div className="overflow-hidden pr-6 md:pr-8 lg:pr-12 pl-0 pt-4 md:pt-6 pb-20 md:pb-28 bg-white min-h-screen relative">
       <div className="max-w-[1800px] mx-auto z-10 relative flex flex-col w-full h-full">
 
         {/* Header section - Spans full width! */}
         <div className="w-full flex flex-col mb-10 pl-6 md:pl-8 lg:pl-12">
-          <Header userName={user.name} />
+          <Header userName={user.name} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
           <Breadcrumb />
         </div>
 
@@ -168,78 +201,154 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Feed Section */}
+            {/* Main Content */}
             <section className="flex flex-col w-full">
-              
-              {/* Upcoming sessions */}
-              <div className="w-full mb-12">
-                <div className="flex flex-wrap gap-4 justify-between items-end w-full mb-6">
-                  <h2 className="text-[32px] md:text-[44px] font-playfair italic font-bold text-zinc-900 border-b-2 border-black pb-2 flex-grow mr-10">
-                    Upcoming sessions
-                  </h2>
-                  <div onClick={() => navigate('/sessions?tab=upcoming')} className="flex gap-2 items-center text-lg font-worksans font-medium text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer shrink-0 pb-2">
-                    <span className="hover:underline">View all</span>
-                    <img
-                      src="https://api.builder.io/api/v1/image/assets/TEMP/3775dd5e7795fe02016b84e1586c9a9d26b49e2d?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-                      className="object-contain w-6 aspect-[1.13]"
-                      alt="Arrow right"
-                    />
+              {isSearching ? (
+                <div className="w-full">
+                  <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
+                    <button 
+                      onClick={() => setSearchFilter('all')}
+                      className={`px-4 py-2 rounded-full font-worksans text-sm font-semibold transition-colors ${searchFilter === 'all' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      All Results
+                    </button>
+                    <button 
+                      onClick={() => setSearchFilter('buddies')}
+                      className={`px-4 py-2 rounded-full font-worksans text-sm font-semibold transition-colors ${searchFilter === 'buddies' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      Buddies ({allFilteredBuddies.length})
+                    </button>
+                    <button 
+                      onClick={() => setSearchFilter('sessions')}
+                      className={`px-4 py-2 rounded-full font-worksans text-sm font-semibold transition-colors ${searchFilter === 'sessions' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      Sessions ({allFilteredSessions.length})
+                    </button>
+                  </div>
+
+                  {(searchFilter === 'all' || searchFilter === 'sessions') && allFilteredSessions.length > 0 && (
+                    <div className="mb-10">
+                      <h3 className="text-2xl font-playfair font-bold mb-4">Sessions</h3>
+                      <div className="flex flex-col gap-4">
+                        {allFilteredSessions.map(session => (
+                          <SessionCard
+                            key={session.id}
+                            id={session.id}
+                            onClick={() => navigate(`/sessions/${session.id}`)}
+                            title={session.title}
+                            date={session.date}
+                            time={session.time}
+                            location={session.location}
+                            isOnline={session.isOnline}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(searchFilter === 'all' || searchFilter === 'buddies') && allFilteredBuddies.length > 0 && (
+                    <div className="mb-10">
+                      <h3 className="text-2xl font-playfair font-bold mb-4">Buddies</h3>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full mt-5">
+                        {allFilteredBuddies.map(buddy => (
+                          <BuddyCard
+                            key={buddy.userId}
+                            userId={buddy.userId}
+                            onClick={() => navigate(`/buddies/${buddy.userId}`)}
+                            name={buddy.name}
+                            field={buddy.field}
+                            school={buddy.school}
+                            year={buddy.year}
+                            matchPercentage={buddy.matchPercentage}
+                            tags={buddy.tags}
+                            subjects={buddy.subjects}
+                            avatar={buddy.avatar}
+                            isRequested={buddy.isRequested}
+                            onConnect={handleConnect}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {allFilteredSessions.length === 0 && allFilteredBuddies.length === 0 && (
+                    <div className="text-center py-20">
+                      <p className="text-xl text-gray-500 font-worksans">No results found for "{searchQuery}"</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full">
+                  {/* Upcoming sessions */}
+                  <div className="w-full mb-12">
+                    <div className="flex flex-wrap gap-4 justify-between items-end w-full mb-6">
+                      <h2 className="text-[32px] md:text-[44px] font-playfair italic font-bold text-zinc-900 border-b-2 border-black pb-2 flex-grow mr-10">
+                        Upcoming sessions
+                      </h2>
+                      <div onClick={() => navigate('/sessions?tab=upcoming')} className="flex gap-2 items-center text-lg font-worksans font-medium text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer shrink-0 pb-2">
+                        <span className="hover:underline">View all</span>
+                        <img
+                          src="https://api.builder.io/api/v1/image/assets/TEMP/3775dd5e7795fe02016b84e1586c9a9d26b49e2d?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+                          className="object-contain w-6 aspect-[1.13]"
+                          alt="Arrow right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-6">
+                      {sessionsData.map((session, index) => (
+                        <SessionCard
+                          key={index}
+                          id={session.id}
+                          onClick={() => navigate(`/sessions/${session.id}`)}
+                          title={session.title}
+                          date={session.date}
+                          time={session.time}
+                          location={session.location}
+                          isOnline={session.isOnline}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Buddy recommendations */}
+                  <div className="w-full">
+                    <div className="flex flex-wrap gap-4 justify-between items-end w-full mb-6">
+                      <h2 className="text-[32px] md:text-[44px] font-playfair italic font-bold text-zinc-900 border-b-2 border-black pb-2 flex-grow mr-10">
+                        Recommended for you
+                      </h2>
+                      <div onClick={() => navigate('/matching')} className="flex gap-2 items-center text-lg font-worksans font-medium text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer shrink-0 pb-2">
+                        <span className="hover:underline">View all</span>
+                        <img
+                          src="https://api.builder.io/api/v1/image/assets/TEMP/77845a99907a8d6bba0926a21eadbeda602c0b35?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
+                          className="object-contain w-6 aspect-[1.13]"
+                          alt="Arrow right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full mt-5">
+                      {buddiesData.map((buddy, index) => (
+                        <BuddyCard
+                          key={index}
+                          userId={buddy.userId}
+                          onClick={() => navigate(`/buddies/${buddy.userId}`)}
+                          name={buddy.name}
+                          field={buddy.field}
+                          school={buddy.school}
+                          year={buddy.year}
+                          matchPercentage={buddy.matchPercentage}
+                          tags={buddy.tags}
+                          subjects={buddy.subjects}
+                          avatar={buddy.avatar}
+                          isRequested={buddy.isRequested}
+                          onConnect={handleConnect}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-6">
-                  {sessionsData.map((session, index) => (
-                    <SessionCard
-                      key={index}
-                      id={session.id}
-                      onClick={() => navigate(`/sessions/${session.id}`)}
-                      title={session.title}
-                      date={session.date}
-                      time={session.time}
-                      location={session.location}
-                      isOnline={session.isOnline}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Buddy recommendations */}
-              <div className="w-full">
-                <div className="flex flex-wrap gap-4 justify-between items-end w-full mb-6">
-                  <h2 className="text-[32px] md:text-[44px] font-playfair italic font-bold text-zinc-900 border-b-2 border-black pb-2 flex-grow mr-10">
-                    Recommended for you
-                  </h2>
-                  <div onClick={() => navigate('/matching')} className="flex gap-2 items-center text-lg font-worksans font-medium text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer shrink-0 pb-2">
-                    <span className="hover:underline">View all</span>
-                    <img
-                      src="https://api.builder.io/api/v1/image/assets/TEMP/77845a99907a8d6bba0926a21eadbeda602c0b35?placeholderIfAbsent=true&apiKey=4da7608a60534d26b82c37ab1c08f865"
-                      className="object-contain w-6 aspect-[1.13]"
-                      alt="Arrow right"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full mt-5">
-                  {buddiesData.map((buddy, index) => (
-                    <BuddyCard
-                      key={index}
-                      userId={buddy.userId}
-                      onClick={() => navigate(`/buddies/${buddy.userId}`)}
-                      name={buddy.name}
-                      field={buddy.field}
-                      school={buddy.school}
-                      year={buddy.year}
-                      matchPercentage={buddy.matchPercentage}
-                      tags={buddy.tags}
-                      subjects={buddy.subjects}
-                      avatar={buddy.avatar}
-                      isRequested={buddy.isRequested}
-                      onConnect={handleConnect}
-                    />
-                  ))}
-                </div>
-              </div>
-
+              )}
             </section>
 
           </main>
