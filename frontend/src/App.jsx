@@ -1,5 +1,24 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
+// Scroll To Top Component
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Disable smooth scroll temporarily so it jumps instantly
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    
+    // Re-enable smooth scrolling for intra-page navigation/animations
+    setTimeout(() => {
+      document.documentElement.style.scrollBehavior = 'smooth';
+    }, 10);
+  }, [pathname]);
+
+  return null;
+};
+
 import SignUp from './pages/SignUp';
 import SignIn from './pages/SignIn';
 import AcademicProfile from './pages/AcademicProfile';
@@ -39,6 +58,7 @@ const AuthRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<BuddyMatcherLanding />} />
         <Route path="/features" element={<FeaturesLanding />} />
