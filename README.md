@@ -2,6 +2,18 @@
 
 > A full-stack, microservices-based platform that helps students find compatible study partners and groups based on shared academic interests, availability, and study preferences — with real-time event-driven communication via Kafka.
 
+<p align="center"><img src="logo.png" alt="Dashboard" width="250"/></p>
+
+<table>
+  
+   <tr>
+    <td><img src="left.png" alt="Dashboard" width="500"/></td>
+    <td><img src="right.png" alt="Dashboard" width="500"/></td>
+   </tr>
+   
+
+   
+</table>
 ---
 
 ## 📑 Table of Contents
